@@ -1,0 +1,417 @@
+/**
+ * 
+ */
+package org.mskcc.marianas.umi.loeb.withcorrection;
+
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.List;
+
+import org.mskcc.marianas.util.FivePrimeClusterCollectionBuilder;
+import org.mskcc.marianas.util.Util;
+
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.reference.IndexedFastaSequenceFile;
+import htsjdk.samtools.util.Interval;
+
+/**
+ * @author Juber Patel
+ * 
+ *         Generate UMI metrics from a bam file
+ *
+ */
+public class ProcessDuplexUMIBamFirstPass
+{
+	private static IndexedFastaSequenceFile referenceFasta;
+
+	public static IndexedFastaSequenceFile getReference()
+	{
+		return referenceFasta;
+	}
+
+	/**
+	 * @param args
+	 *            args[0] - bam file; args[1] - bed file; args[2] - UMI allowed
+	 *            mismatches; args[3] - UMI allowed wobble
+	 * @throws Exception
+	 */
+	public static void main(String[] args) throws Exception
+	{
+		File bamFile = new File(args[0]);
+		File bedFile = new File(args[1]);
+		int UMIMismatches = Integer.parseInt(args[2]);
+		int wobble = Integer.parseInt(args[3]);
+		// set the reference fasta
+		referenceFasta = new IndexedFastaSequenceFile(new File(args[4]));
+
+		// no args after this point
+
+		long start = System.currentTimeMillis();
+
+		// preliminaries
+		String fileName = bedFile.getName();
+		String intervalsLabel = fileName.substring(0, fileName.indexOf(".bed"));
+		SamReaderFactory factory = SamReaderFactory.makeDefault();
+		SamReader reader = factory.open(bamFile);
+		SAMFileHeader header = reader.getFileHeader();
+		reader.close();
+
+		// It is assumed that there is only one read group in the bam file!!!
+		String sampleID = header.getReadGroups().get(0).getSample();
+
+		// go through the intervals in the given bed file and collect numbers
+		List<Interval> intervals = Util.loadIntervals(bedFile);
+
+		System.out.println("Processing " + bamFile.getName() + " at "
+				+ intervalsLabel + " intervals...");
+
+		processBamFirstPass(bamFile, intervals, UMIMismatches, wobble,
+				sampleID);
+		// processBamAtIntervals(bamFile, intervals, UMIMismatches, wobble,
+		// sampleID);
+
+		long end = System.currentTimeMillis();
+		System.out.println("Finished processing in " + ((end - start) / 1000)
+				+ " seconds.");
+	}
+
+	private static void processBamFirstPass(File bamFile,
+			List<Interval> intervals, int mismatches, int wobble,
+			String sampleID) throws Exception
+	{
+		File firstPassFile = new File(bamFile.getName() + ".first-pass.txt");
+		BufferedWriter firstPassWriter = new BufferedWriter(
+				new FileWriter(firstPassFile));
+
+		FivePrimeClusterCollectionBuilder clusterBuilder = new FivePrimeClusterCollectionBuilder(
+				bamFile, wobble, mismatches);
+
+		DuplicateReadClusterCollection clusterCollection = null;
+
+		// iterate
+		while (true)
+		{
+			clusterCollection = clusterBuilder.next();
+
+			// end of bam file
+			if (clusterCollection == null)
+			{
+				break;
+			}
+
+			// processIntervalUMIs(clustersByPosition, UMIMismatches, wobble,
+			// sampleID,
+			// firstPassWriter);
+			recordLeftClusterCollection(clusterCollection, sampleID,
+					firstPassWriter);
+		}
+
+		clusterBuilder.close();
+		firstPassWriter.close();
+
+		System.out.println(
+				"Total UMI Pairs: " + clusterBuilder.getTotalUMIPairs());
+		System.out
+				.println(
+						"Poly-G Fragments: " + clusterBuilder.getPolyGUMIs()
+								+ " ("
+								+ ((1.0 * clusterBuilder.getPolyGUMIs())
+										/ clusterBuilder.getTotalUMIPairs())
+								+ ")");
+		System.out
+				.println(
+						"Non-Poly-G but Invalid Fragments: "
+								+ clusterBuilder.getInvalidFragments() + " ("
+								+ ((1.0 * clusterBuilder.getInvalidFragments())
+										/ clusterBuilder.getTotalUMIPairs())
+								+ ")");
+		System.out.println(
+				"Valid Fragments: " + clusterBuilder.getValidFragments());
+
+	}
+
+	private static void recordLeftClusterCollection(
+			DuplicateReadClusterCollection clusterCollection, String sampleID,
+			BufferedWriter firstPassWriter) throws IOException
+	{
+		// TODO write all the needed information !!!
+
+		// write clusters
+		DuplicateReadCluster[] processedClusters = clusterCollection
+				.getProcessedClusters();
+
+		for (int i = 0; i < processedClusters.length; i++)
+		{
+			DuplicateReadCluster cluster = processedClusters[i];
+			if (cluster == null)
+			{
+				continue;
+			}
+
+			String[] seq = cluster.consensusSequence();
+			// TODO decide what else you want to write for first pass
+			firstPassWriter
+					.write(sampleID + "\t" + cluster.consensusSequenceName()
+							+ "\t" + seq[0] + "\t" + seq[1] + "\n");
+		}
+
+		firstPassWriter.flush();
+	}
+
+	//////////////////////////
+	////////////////////////////
+	//////////////////////////////
+	/////////////////////////////
+
+	// old code
+	//////////////////////////////////////////
+
+	/*
+	 * public void old()
+	 * {
+	 * while (reader.hasNext())
+	 * {
+	 * String readName = record.getReadName();
+	 * String UMIString = readName
+	 * .substring(readName.lastIndexOf(':') + 1);
+	 * 
+	 * // at least one read of the pair is unmapped
+	 * if (record.getReadUnmappedFlag() || record.getMateUnmappedFlag())
+	 * {
+	 * Integer count = unmapped.get(UMIString);
+	 * if (count == null)
+	 * {
+	 * count = 0;
+	 * }
+	 * 
+	 * count++;
+	 * unmapped.put(UMIString, count);
+	 * continue;
+	 * }
+	 * 
+	 * // only look at the reads mapping on the positive strand, that
+	 * // gives us sufficient information
+	 * if (record.getReadNegativeStrandFlag())
+	 * {
+	 * continue;
+	 * }
+	 * 
+	 * totalUMIPairs++;
+	 * 
+	 * // only process read pairs that are concordant ie have proper
+	 * // orientation
+	 * int concordance = getConcordance(record);
+	 * 
+	 * // int maxGs = (UMIString.length() / 4) + 1;
+	 * int maxNucleotides = 10;
+	 * if (Util.poly(UMIString, 'A', maxNucleotides))
+	 * {
+	 * polyGUMIs++;
+	 * continue;
+	 * }
+	 * 
+	 * // discordant read pair
+	 * if (concordance == 0)
+	 * {
+	 * invalidFragments++;
+	 * continue;
+	 * }
+	 * 
+	 * validFragments++;
+	 * 
+	 * UMIString = getStandardForm(UMIString);
+	 * 
+	 * boolean positiveStrand;
+	 * 
+	 * // positive strand ie read1 mapped on positive strand and read2
+	 * // mapped on negative strand
+	 * if (concordance == 1)
+	 * {
+	 * positiveStrand = true;
+	 * }
+	 * else
+	 * {
+	 * // negative strand ie read1 mapped on negative strand and
+	 * // read2 mapped on positive strand
+	 * positiveStrand = false;
+	 * }
+	 * 
+	 * // add the UMI to the correct cluster collection
+	 * clustersByPosition[alignmentStart - intervalStart].add(UMIString,
+	 * positiveStrand);
+	 * }
+	 * 
+	 * iterator.close();
+	 * 
+	 * processIntervalUMIs(clustersByPosition, UMIMismatches, wobble, sampleID,
+	 * firstPassWriter);
+	 * 
+	 * firstPassWriter.close();
+	 * reader.close();
+	 * 
+	 * System.out.println("Total UMI Pairs: " + totalUMIPairs);
+	 * System.out.println("Poly-G Fragments: " + polyGUMIs + " ("
+	 * + ((1.0 * polyGUMIs) / totalUMIPairs) + ")");
+	 * System.out.println(
+	 * "Non-Poly-G but Invalid Fragments: " + invalidFragments + " ("
+	 * + ((1.0 * invalidFragments) / totalUMIPairs) + ")");
+	 * System.out.println("Valid Fragments: " + validFragments);
+	 * 
+	 * }
+	 */
+
+	/**
+	 * 
+	 * @param clustersByPosition
+	 * @param uMIMismatches
+	 *            number of mismatches allowed in UMIs
+	 * @param wobble
+	 *            number of positions to consider to look for UMI matches
+	 * @param sampleID
+	 * @param summaryWriter
+	 * @throws IOException
+	 */
+	/*
+	 * private static void processIntervalUMIs(
+	 * DuplicateReadClusterCollection[] clustersByPosition,
+	 * int UMIMismatches, int wobble, String sampleID,
+	 * BufferedWriter summaryWriter) throws IOException
+	 * {
+	 * 
+	 * System.out.println("sorting by cluster count...");
+	 * 
+	 * // probably take another tack: sort all clusters by count and then for
+	 * // each cluster find other clusters that are within wobble and mismatch
+	 * // distance
+	 * DuplicateReadCluster[] clusters = sortClustersByCount(
+	 * clustersByPosition);
+	 * 
+	 * System.out.println("merging...");
+	 * // process the cluster collection array
+	 * for (int i = 0; i < clusters.length; i++)
+	 * {
+	 * if (clusters[i].startPosition == 0)
+	 * {
+	 * continue;
+	 * }
+	 * 
+	 * for (int j = i + 1; j < clusters.length; j++)
+	 * {
+	 * if (clusters[j].startPosition == 0)
+	 * {
+	 * continue;
+	 * }
+	 * 
+	 * if (sameCluster(clusters[i], clusters[j], wobble,
+	 * UMIMismatches))
+	 * {
+	 * clusters[i].psReadCount += clusters[j].psReadCount;
+	 * clusters[i].nsReadCount += clusters[j].nsReadCount;
+	 * clusters[j].startPosition = 0;
+	 * clusters[j].psReadCount = 0;
+	 * clusters[j].nsReadCount = 0;
+	 * }
+	 * }
+	 * }
+	 * 
+	 * System.out.println("sorting by position...");
+	 * // sort by position and count
+	 * sortClustersByPositionAndCount(clusters);
+	 * 
+	 * System.out.println("writing...");
+	 * 
+	 * // write clusters
+	 * for (int i = 0; i < clusters.length; i++)
+	 * {
+	 * DuplicateReadCluster cluster = clusters[i];
+	 * if (cluster.startPosition == 0)
+	 * {
+	 * continue;
+	 * }
+	 * 
+	 * summaryWriter.write(sampleID + "\t" + cluster.contig + "\t"
+	 * + cluster.startPosition + "\t" + cluster.UMI + "\t"
+	 * + cluster.psReadCount + "\t" + cluster.nsReadCount + "\n");
+	 * }
+	 * 
+	 * summaryWriter.flush();
+	 * }
+	 */
+
+	/**
+	 * determine whether the 2 clusters should be considered as same given the
+	 * allowed position wobble and UMI base mismatches
+	 * 
+	 * @param cluster1
+	 * @param cluster2
+	 * @param wobble
+	 * @param uMIMismatches
+	 * @return
+	 */
+	/*
+	 * private static boolean sameCluster(DuplicateReadCluster cluster1,
+	 * DuplicateReadCluster cluster2, int wobble, int UMIMismatches)
+	 * {
+	 * if (Math.abs(cluster1.startPosition - cluster2.startPosition) <= wobble
+	 * && Util.distance(cluster1.UMI, cluster2.UMI) <= UMIMismatches)
+	 * {
+	 * return true;
+	 * }
+	 * 
+	 * return false;
+	 * }
+	 * 
+	 * private static DuplicateReadCluster[] sortClustersByCount(
+	 * DuplicateReadClusterCollection[] clustersByPosition)
+	 * {
+	 * List<DuplicateReadCluster> clusters = new
+	 * ArrayList<DuplicateReadCluster>();
+	 * 
+	 * for (int i = 0; i < clustersByPosition.length; i++)
+	 * {
+	 * clusters.addAll(clustersByPosition[i].clusters.values());
+	 * }
+	 * 
+	 * clusters.sort(new Comparator<DuplicateReadCluster>()
+	 * {
+	 * 
+	 * @Override
+	 * public int compare(DuplicateReadCluster c1, DuplicateReadCluster c2)
+	 * {
+	 * return (c2.psReadCount + c2.nsReadCount)
+	 * - (c1.psReadCount + c1.nsReadCount);
+	 * }
+	 * });
+	 * 
+	 * return clusters.toArray(new DuplicateReadCluster[0]);
+	 * }
+	 * 
+	 * private static void sortClustersByPositionAndCount(
+	 * DuplicateReadCluster[] clusters)
+	 * {
+	 * Arrays.sort(clusters, new Comparator<DuplicateReadCluster>()
+	 * {
+	 * 
+	 * @Override
+	 * public int compare(DuplicateReadCluster c1, DuplicateReadCluster c2)
+	 * {
+	 * int diff = c1.startPosition - c2.startPosition;
+	 * if (diff != 0)
+	 * {
+	 * return diff;
+	 * }
+	 * else
+	 * {
+	 * return (c2.psReadCount + c2.nsReadCount)
+	 * - (c1.psReadCount + c1.nsReadCount);
+	 * }
+	 * }
+	 * });
+	 * }
+	 */
+
+}
