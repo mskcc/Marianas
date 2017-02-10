@@ -36,7 +36,7 @@ import htsjdk.samtools.SAMRecord;
  *         and allowed mismatches while constructing clusters.
  *
  */
-public class FivePrimeClusterCollectionBuilder
+public class PositiveStrandReadsClusterCollectionBuilder
 {
 	private int wobble;
 	private int mismatches;
@@ -59,7 +59,7 @@ public class FivePrimeClusterCollectionBuilder
 	private ObjectPool<DuplicateReadCluster> clusterPool;
 	private Comparator<DuplicateReadCluster> clusterCountComparator;
 
-	public FivePrimeClusterCollectionBuilder(File bamFile, int wobble,
+	public PositiveStrandReadsClusterCollectionBuilder(File bamFile, int wobble,
 			int mismatches)
 	{
 		this.wobble = wobble;
@@ -289,10 +289,16 @@ public class FivePrimeClusterCollectionBuilder
 
 			// only process read pairs that are concordant ie have proper
 			// orientation
-			int concordance = isGoodAlignment(record);
+			// int concordance = isGoodAlignment(record);
 
-			// discordant read pair
-			if (concordance == 0)
+			// TODO think what mapping quality conditions to impose on read and
+			// mate
+			// TODO think what other conditions could invalidate a fragment
+
+			// discordant, both reads map on positive strand OR
+			// read maps at multiple places
+			if (!record.getMateNegativeStrandFlag()
+					|| record.getMappingQuality() < 1)
 			{
 				invalidFragments++;
 				continue;
@@ -300,16 +306,17 @@ public class FivePrimeClusterCollectionBuilder
 
 			validFragments++;
 
-			UMIString = getStandardForm(UMIString);
-
+			// the strand of the fragment, not the read!
 			// positive strand: read1 mapped on positive strand and read2
 			// mapped on negative strand
 			// negative strand: read1 mapped on negative strand and
 			// read2 mapped on positive strand
-			boolean positiveStrand = concordance == 1 ? true : false;
+			boolean fragmentPositiveStrand = record.getFirstOfPairFlag();
+
+			UMIString = getStandardForm(UMIString);
 
 			// add the UMI to the cluster collection
-			clusterCollection.add(UMIString, record, positiveStrand);
+			clusterCollection.add(UMIString, record, fragmentPositiveStrand);
 		}
 	}
 
@@ -359,16 +366,16 @@ public class FivePrimeClusterCollectionBuilder
 			return 0;
 		}
 
-		boolean readStrand = record.getReadNegativeStrandFlag();
-		boolean mateStrand = record.getMateNegativeStrandFlag();
+		boolean readNegativeStrand = record.getReadNegativeStrandFlag();
+		boolean mateNegativeStrand = record.getMateNegativeStrandFlag();
 
-		// read and mate mapped on the same strands
-		if (!(readStrand ^ mateStrand))
+		// read and mate mapped on the same strand
+		if (!(readNegativeStrand ^ mateNegativeStrand))
 		{
 			return 0;
 		}
 
-		if (!readStrand && record.getFirstOfPairFlag())
+		if (!readNegativeStrand && record.getFirstOfPairFlag())
 		{
 			return 1;
 		}

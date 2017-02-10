@@ -9,7 +9,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.List;
 
-import org.mskcc.marianas.util.FivePrimeClusterCollectionBuilder;
+import org.mskcc.marianas.util.PositiveStrandReadsClusterCollectionBuilder;
 import org.mskcc.marianas.util.Util;
 
 import htsjdk.samtools.SAMFileHeader;
@@ -87,7 +87,7 @@ public class ProcessDuplexUMIBamFirstPass
 		BufferedWriter firstPassWriter = new BufferedWriter(
 				new FileWriter(firstPassFile));
 
-		FivePrimeClusterCollectionBuilder clusterBuilder = new FivePrimeClusterCollectionBuilder(
+		PositiveStrandReadsClusterCollectionBuilder clusterBuilder = new PositiveStrandReadsClusterCollectionBuilder(
 				bamFile, wobble, mismatches);
 
 		DuplicateReadClusterCollection clusterCollection = null;
