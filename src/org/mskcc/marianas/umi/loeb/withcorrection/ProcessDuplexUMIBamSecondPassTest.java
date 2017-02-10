@@ -9,7 +9,7 @@ import java.io.File;
  * @author Juber Patel
  *
  */
-public class ProcessDuplexUMIBamFirstPassTest
+public class ProcessDuplexUMIBamSecondPassTest
 {
 
 	/**
@@ -30,12 +30,12 @@ public class ProcessDuplexUMIBamFirstPassTest
 		String UMIMismatches = "2";
 		String wobble = "2";
 		String referenceFasta = "/Users/patelj1/resources/hg19-ncbi/Homo_sapiens_assembly19.fasta";
-		String R1FastqName = "139417-100ng_IGO_05500_CD_4_S80_L005_R1_001";
+		String sampleName = new File(bamFile).getName().split("_bc")[0];
 		String outputFolder = "/Users/patelj1/workspace/Marianas/umi/umi-processed-fastqs/Project-CD/Sample_139417-100ng_IGO_05500_CD_4";
 
 		ProcessDuplexUMIBamFirstPass
 				.main(new String[] { bamFile, bedFile, UMIMismatches, wobble,
-						referenceFasta, R1FastqName, outputFolder });
+						referenceFasta, sampleName, outputFolder });
 
 	}
 

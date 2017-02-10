@@ -58,6 +58,8 @@ public class DuplicateReadCluster
 	private int readIndex;
 	private boolean duplicate = false;
 
+	private Map<String, Integer> matePositions;
+
 	public DuplicateReadCluster()
 	{
 		this.psPositions = new PositionPileup[maxReadLength];
@@ -78,6 +80,8 @@ public class DuplicateReadCluster
 
 		psSpecialGenotypes = new HashMap<GenotypeID, Genotype>();
 		nsSpecialGenotypes = new HashMap<GenotypeID, Genotype>();
+
+		matePositions = new HashMap<String, Integer>();
 	}
 
 	/**
@@ -105,6 +109,8 @@ public class DuplicateReadCluster
 
 		psSpecialGenotypes.clear();
 		nsSpecialGenotypes.clear();
+
+		matePositions.clear();
 	}
 
 	/**
@@ -122,6 +128,8 @@ public class DuplicateReadCluster
 
 		PositionPileup[] positions = null;
 		Map<GenotypeID, Genotype> specialGenotypes = null;
+
+		recordMatePosition(record);
 
 		if (positiveStrand)
 		{
@@ -258,6 +266,22 @@ public class DuplicateReadCluster
 		}
 	}
 
+	private void recordMatePosition(SAMRecord record)
+	{
+		String matePosition = record.getMateReferenceIndex() + "\t"
+				+ record.getMateAlignmentStart();
+
+		Integer freq = matePositions.get(matePosition);
+		if (freq == null)
+		{
+			matePositions.put(matePosition, 1);
+		}
+		else
+		{
+			matePositions.put(matePosition, freq + 1);
+		}
+	}
+
 	/**
 	 * 
 	 * @param genotypeID
@@ -332,7 +356,7 @@ public class DuplicateReadCluster
 	 * 
 	 * @return
 	 */
-	public String[] consensusSequence()
+	public String consensusSequenceInfo()
 	{
 		// TODO This method will undergo revision as we determine how exactly we
 		// want to build the consensus sequence. There are many parameters to
@@ -439,19 +463,44 @@ public class DuplicateReadCluster
 			qualities[i] = 'S';
 		}
 
-		return new String[] { sequence, new String(qualities) };
+		StringBuilder info = new StringBuilder();
+
+		info.append(contig).append("\t").append(startPosition).append("\t")
+				.append(UMI).append("\t").append(psReadCount).append("\t")
+				.append(nsReadCount).append("\t").append(getMatePosition())
+				.append("\t").append(sequence).append("\t").append(qualities);
+
+		return info.toString();
+
+	}
+
+	private String getMatePosition()
+	{
+		int max = 0;
+		String position = null;
+		for (String key : matePositions.keySet())
+		{
+			int freq = matePositions.get(key);
+			if (freq > max)
+			{
+				max = freq;
+				position = key;
+			}
+		}
+
+		return position;
 	}
 
 	/**
 	 * 
 	 * @return unique name for the collapsed sequence
 	 */
-	public String consensusSequenceName()
+	public String consensusSequenceInfoOld()
 	{
-		StringBuilder builder = new StringBuilder("@Marianas:");
+		StringBuilder builder = new StringBuilder();
 
-		builder.append(contig).append(":").append(startPosition).append(":")
-				.append(UMI).append(":").append(psReadCount).append(":")
+		builder.append(contig).append("\t").append(startPosition).append("\t")
+				.append(UMI).append("\t").append(psReadCount).append("\t")
 				.append(nsReadCount);
 
 		return builder.toString();

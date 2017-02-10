@@ -3,8 +3,10 @@
  */
 package org.mskcc.marianas.umi.loeb.withcorrection;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.List;
@@ -21,7 +23,7 @@ import htsjdk.samtools.util.Interval;
  *         Generate UMI metrics from a bam file
  *
  */
-public class ProcessDuplexUMIBamFirstPass
+public class ProcessDuplexUMIBamSecondPass
 {
 	private static IndexedFastaSequenceFile referenceFasta;
 
@@ -35,6 +37,7 @@ public class ProcessDuplexUMIBamFirstPass
 	 *            args[0] - bam file; args[1] - bed file; args[2] - UMI allowed
 	 *            mismatches; args[3] - UMI allowed wobble; args[4] - reference
 	 *            fasta; args[5] - R1 fastq name; args[6] - output folder
+	 * 
 	 * @throws Exception
 	 */
 	public static void main(String[] args) throws Exception
@@ -62,24 +65,31 @@ public class ProcessDuplexUMIBamFirstPass
 		File firstPassFile = new File(outputFolder,
 				R1FastqName + ".first-pass.txt");
 
-		System.out.println("Marianas Loeb UMI First Pass");
-		System.out.println("Processing " + bamFile.getName());
+		System.out.println("Marianas Loeb UMI Second Pass");
+		System.out.println("Processing " + firstPassFile.getAbsolutePath()
+				+ " to produce fastqs");
 
-		firstPass(bamFile, intervals, UMIMismatches, wobble,
-				firstPassFile);
+		secondPass(bamFile, intervals, UMIMismatches, wobble, R1FastqName,
+				outputFolder, firstPassFile);
 
 		long end = System.currentTimeMillis();
 		System.out.println("Finished processing in " + ((end - start) / 1000)
 				+ " seconds.");
 	}
 
-	private static void firstPass(File bamFile,
-			List<Interval> intervals, int mismatches, int wobble,
+	private static void secondPass(File bamFile, List<Interval> intervals,
+			int mismatches, int wobble, String R1FastqName, File outputFolder,
 			File firstPassFile) throws Exception
 	{
+		BufferedReader firstPassReader = new BufferedReader(
+				new FileReader(firstPassFile));
 
-		BufferedWriter firstPassWriter = new BufferedWriter(
-				new FileWriter(firstPassFile));
+		BufferedWriter fastq1 = new BufferedWriter(
+				new FileWriter(new File(outputFolder, R1FastqName + ".fastq")));
+
+		String R2FastqName = R1FastqName.replace("_R1_", "_R2_");
+		BufferedWriter fastq2 = new BufferedWriter(
+				new FileWriter(new File(outputFolder, R2FastqName + ".fastq")));
 
 		PositiveStrandReadsClusterCollectionBuilder clusterBuilder = new PositiveStrandReadsClusterCollectionBuilder(
 				bamFile, wobble, mismatches);
@@ -100,11 +110,14 @@ public class ProcessDuplexUMIBamFirstPass
 			// processIntervalUMIs(clustersByPosition, UMIMismatches, wobble,
 			// sampleID,
 			// firstPassWriter);
-			recordLeftClusterCollection(clusterCollection, firstPassWriter);
+			writeReadPair(clusterCollection, firstPassReader,
+					fastq1, fastq2);
 		}
 
 		clusterBuilder.close();
-		firstPassWriter.close();
+		firstPassReader.close();
+		fastq1.close();
+		fastq2.close();
 
 		System.out.println(
 				"Total UMI Pairs: " + clusterBuilder.getTotalUMIPairs());
@@ -127,9 +140,10 @@ public class ProcessDuplexUMIBamFirstPass
 
 	}
 
-	private static void recordLeftClusterCollection(
+	private static void writeReadPair(
 			DuplicateReadClusterCollection clusterCollection,
-			BufferedWriter firstPassWriter) throws IOException
+			BufferedReader firstPassReader, BufferedWriter fastq1,
+			BufferedWriter fastq2) throws IOException
 	{
 		// TODO write all the needed information !!!
 
