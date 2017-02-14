@@ -269,6 +269,7 @@ public class DuplicateReadCluster
 	private void recordMatePosition(SAMRecord record)
 	{
 		String matePosition = record.getMateReferenceIndex() + "\t"
+				+ record.getMateReferenceName() + "\t"
 				+ record.getMateAlignmentStart();
 
 		Integer freq = matePositions.get(matePosition);
@@ -489,21 +490,6 @@ public class DuplicateReadCluster
 		}
 
 		return position;
-	}
-
-	/**
-	 * 
-	 * @return unique name for the collapsed sequence
-	 */
-	public String consensusSequenceInfoOld()
-	{
-		StringBuilder builder = new StringBuilder();
-
-		builder.append(contig).append("\t").append(startPosition).append("\t")
-				.append(UMI).append("\t").append(psReadCount).append("\t")
-				.append(nsReadCount);
-
-		return builder.toString();
 	}
 
 	public String getContig()

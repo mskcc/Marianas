@@ -9,7 +9,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.List;
 
-import org.mskcc.marianas.util.PositiveStrandReadsClusterCollectionBuilder;
+import org.mskcc.marianas.util.ClusterCollectionBuilder;
 import org.mskcc.marianas.util.Util;
 
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
@@ -65,24 +65,22 @@ public class ProcessDuplexUMIBamFirstPass
 		System.out.println("Marianas Loeb UMI First Pass");
 		System.out.println("Processing " + bamFile.getName());
 
-		firstPass(bamFile, intervals, UMIMismatches, wobble,
-				firstPassFile);
+		firstPass(bamFile, intervals, UMIMismatches, wobble, firstPassFile);
 
 		long end = System.currentTimeMillis();
 		System.out.println("Finished processing in " + ((end - start) / 1000)
 				+ " seconds.");
 	}
 
-	private static void firstPass(File bamFile,
-			List<Interval> intervals, int mismatches, int wobble,
-			File firstPassFile) throws Exception
+	private static void firstPass(File bamFile, List<Interval> intervals,
+			int mismatches, int wobble, File firstPassFile) throws Exception
 	{
 
 		BufferedWriter firstPassWriter = new BufferedWriter(
 				new FileWriter(firstPassFile));
 
-		PositiveStrandReadsClusterCollectionBuilder clusterBuilder = new PositiveStrandReadsClusterCollectionBuilder(
-				bamFile, wobble, mismatches);
+		ClusterCollectionBuilder clusterBuilder = new ClusterCollectionBuilder(
+				bamFile, wobble, mismatches, true);
 
 		DuplicateReadClusterCollection clusterCollection = null;
 
@@ -97,10 +95,7 @@ public class ProcessDuplexUMIBamFirstPass
 				break;
 			}
 
-			// processIntervalUMIs(clustersByPosition, UMIMismatches, wobble,
-			// sampleID,
-			// firstPassWriter);
-			recordLeftClusterCollection(clusterCollection, firstPassWriter);
+			recordPositiveStrandClusterCollection(clusterCollection, firstPassWriter);
 		}
 
 		clusterBuilder.close();
@@ -127,7 +122,7 @@ public class ProcessDuplexUMIBamFirstPass
 
 	}
 
-	private static void recordLeftClusterCollection(
+	private static void recordPositiveStrandClusterCollection(
 			DuplicateReadClusterCollection clusterCollection,
 			BufferedWriter firstPassWriter) throws IOException
 	{

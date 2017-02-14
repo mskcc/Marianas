@@ -47,6 +47,11 @@ public class SlidingWindowBamReader
 	private String contig;
 
 	/**
+	 * index of the contig in the bam header
+	 */
+	private int contigIndex;
+
+	/**
 	 * current genomic position of the left edge of the window
 	 */
 	private int startPosition;
@@ -85,6 +90,7 @@ public class SlidingWindowBamReader
 		// read first record
 		nextMappedRecord();
 		contig = "0";
+		contigIndex = -1;
 		startPosition = 0;
 		endPosition = 0;
 
@@ -135,7 +141,8 @@ public class SlidingWindowBamReader
 			}
 
 			// get new contig and positions
-			contig = nextRecord.getContig();
+			contig = nextRecord.getReferenceName();
+			contigIndex = nextRecord.getReferenceIndex();
 			startPosition = nextRecord.getAlignmentStart();
 			endPosition = startPosition + recordsForWindow.length - 1;
 
@@ -222,7 +229,7 @@ public class SlidingWindowBamReader
 
 	public boolean hasNextOnSameContig()
 	{
-		if (hasNext() && nextRecord.getContig().equals(contig))
+		if (hasNext() && nextRecord.getReferenceIndex() == contigIndex)
 		{
 			return true;
 		}
@@ -239,6 +246,11 @@ public class SlidingWindowBamReader
 	public String getCurrentWindowContig()
 	{
 		return contig;
+	}
+
+	public int getCurrentWindowContigIndex()
+	{
+		return contigIndex;
 	}
 
 	public int getCurrentWindowStartPosition()

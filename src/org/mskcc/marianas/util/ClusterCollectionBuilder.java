@@ -36,7 +36,7 @@ import htsjdk.samtools.SAMRecord;
  *         and allowed mismatches while constructing clusters.
  *
  */
-public class PositiveStrandReadsClusterCollectionBuilder
+public class ClusterCollectionBuilder
 {
 	private int wobble;
 	private int mismatches;
@@ -58,12 +58,23 @@ public class PositiveStrandReadsClusterCollectionBuilder
 	private long invalidFragments;
 	private ObjectPool<DuplicateReadCluster> clusterPool;
 	private Comparator<DuplicateReadCluster> clusterCountComparator;
+	private boolean positiveStrand;
 
-	public PositiveStrandReadsClusterCollectionBuilder(File bamFile, int wobble,
-			int mismatches)
+	/**
+	 * 
+	 * @param bamFile
+	 * @param wobble
+	 * @param mismatches
+	 * @param positiveStrand
+	 *            the read strand (as opposed to fragment strand). We process
+	 *            the reads mapping mapping 5' -> 3' on one strand at a time
+	 */
+	public ClusterCollectionBuilder(File bamFile, int wobble, int mismatches,
+			boolean positiveStrand)
 	{
 		this.wobble = wobble;
 		this.mismatches = mismatches;
+		this.positiveStrand = positiveStrand;
 		this.reader = new SlidingWindowBamReader(bamFile, wobble * 2 + 1);
 		this.currentClusterWindow = new DuplicateReadClusterCollection[wobble
 				* 2 + 1];
@@ -246,6 +257,7 @@ public class PositiveStrandReadsClusterCollectionBuilder
 
 		DuplicateReadClusterCollection clusterCollection = currentClusterWindow[windowIndex];
 		clusterCollection.prepareFor(reader.getCurrentWindowContig(),
+				reader.getCurrentWindowContigIndex(),
 				reader.getCurrentWindowStartPosition() + windowIndex);
 
 		for (SAMRecord record : records)
@@ -268,11 +280,8 @@ public class PositiveStrandReadsClusterCollectionBuilder
 				continue;
 			}
 
-			// this is pass 1
-			// only look at the reads mapping on the positive strand
-			// that is sufficient to build the left cluster
-			//
-			if (record.getReadNegativeStrandFlag())
+			// only look at the reads mapping on the specified strand
+			if (!(positiveStrand ^ record.getReadNegativeStrandFlag()))
 			{
 				continue;
 			}

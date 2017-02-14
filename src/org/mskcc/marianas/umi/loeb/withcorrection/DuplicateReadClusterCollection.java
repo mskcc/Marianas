@@ -20,6 +20,7 @@ import htsjdk.samtools.SAMRecord;
 public class DuplicateReadClusterCollection
 {
 	private String contig;
+	private int contigIndex;
 	private int startPosition;
 
 	/**
@@ -36,9 +37,11 @@ public class DuplicateReadClusterCollection
 		this.clusterPool = clusterPool;
 	}
 
-	public void prepareFor(String contig, int startPosition) throws Exception
+	public void prepareFor(String contig, int contigIndex, int startPosition)
+			throws Exception
 	{
 		this.contig = contig;
+		this.contigIndex = contigIndex;
 		this.startPosition = startPosition;
 
 		// return the DuplicateReadCluster objects to the pool
@@ -78,6 +81,21 @@ public class DuplicateReadClusterCollection
 
 		return processedClusters;
 
+	}
+
+	public String getContig()
+	{
+		return contig;
+	}
+
+	public int getContigIndex()
+	{
+		return contigIndex;
+	}
+
+	public int getStartPosition()
+	{
+		return startPosition;
 	}
 
 }
