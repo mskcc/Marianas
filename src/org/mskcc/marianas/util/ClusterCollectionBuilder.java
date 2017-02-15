@@ -56,6 +56,10 @@ public class ClusterCollectionBuilder
 	private long polyGUMIs;
 	private long validFragments;
 	private long invalidFragments;
+	private long readsOnPositiveStrand;
+	private long readsOnNegativeStrand;
+	private long fragmentsFromPositiveStrand;
+	private long fragmentsFromNegativeStrand;
 	private ObjectPool<DuplicateReadCluster> clusterPool;
 	private Comparator<DuplicateReadCluster> clusterCountComparator;
 	private boolean positiveStrand;
@@ -126,6 +130,13 @@ public class ClusterCollectionBuilder
 			{
 				// no change in currentPositionIndex, it remains equal to wobble
 				currentRecordWindow = reader.slide();
+
+				// DEBUG
+				if (currentRecordWindow[currentRecordWindow.length - 1]
+						.size() > 10)
+				{
+					int a = 5;
+				}
 
 				// basic logging
 				if (reader.getCurrentWindowStartPosition() % 10000000 == 0)
@@ -304,9 +315,10 @@ public class ClusterCollectionBuilder
 			// mate
 			// TODO think what other conditions could invalidate a fragment
 
-			// discordant, both reads map on positive strand OR
+			// discordant, both reads map on the same strand OR
 			// read maps at multiple places
-			if (!record.getMateNegativeStrandFlag()
+			if (record.getReadNegativeStrandFlag() == record
+					.getMateNegativeStrandFlag()
 					|| record.getMappingQuality() < 1)
 			{
 				invalidFragments++;
@@ -315,12 +327,34 @@ public class ClusterCollectionBuilder
 
 			validFragments++;
 
+			// record read strand
+			if (positiveStrand)
+			{
+				readsOnPositiveStrand++;
+			}
+			else
+			{
+				readsOnNegativeStrand++;
+			}
+
 			// the strand of the fragment, not the read!
 			// positive strand: read1 mapped on positive strand and read2
 			// mapped on negative strand
 			// negative strand: read1 mapped on negative strand and
 			// read2 mapped on positive strand
-			boolean fragmentPositiveStrand = record.getFirstOfPairFlag();
+			boolean fragmentPositiveStrand = !(positiveStrand
+					^ record.getFirstOfPairFlag());
+
+			// record fragment strand, only do this for read1 to avoid double
+			// counting
+			if (fragmentPositiveStrand)
+			{
+				fragmentsFromPositiveStrand++;
+			}
+			else
+			{
+				fragmentsFromNegativeStrand++;
+			}
 
 			UMIString = getStandardForm(UMIString);
 
@@ -356,42 +390,6 @@ public class ClusterCollectionBuilder
 		}
 
 		return UMIString1;
-	}
-
-	/**
-	 * 
-	 * @param record
-	 * @return 0 if the read pair does not have proper relative orientation
-	 *         1 if the read is first of the pair ie read1, meaning the fragment
-	 *         maps on the positive strand
-	 *         2 if the read is not first of the pair ie read2, meaning the
-	 *         fragment maps on the negative strand
-	 */
-	private int isGoodAlignment(SAMRecord record)
-	{
-		// TODO decide what quality value filter you want to apply
-		if (record.getMappingQuality() < 1)
-		{
-			return 0;
-		}
-
-		boolean readNegativeStrand = record.getReadNegativeStrandFlag();
-		boolean mateNegativeStrand = record.getMateNegativeStrandFlag();
-
-		// read and mate mapped on the same strand
-		if (!(readNegativeStrand ^ mateNegativeStrand))
-		{
-			return 0;
-		}
-
-		if (!readNegativeStrand && record.getFirstOfPairFlag())
-		{
-			return 1;
-		}
-		else
-		{
-			return 2;
-		}
 	}
 
 	/**
@@ -488,6 +486,26 @@ public class ClusterCollectionBuilder
 		return clusterArray;
 	}
 
+	public void printNumbers()
+	{
+		System.out.println("Total UMI Pairs: " + totalUMIPairs);
+		System.out.println("Poly-G Fragments: " + polyGUMIs + " ("
+				+ ((1.0 * polyGUMIs) / totalUMIPairs) + ")");
+		System.out.println(
+				"Non-Poly-G but Invalid Fragments: " + invalidFragments + " ("
+						+ ((1.0 * invalidFragments) / totalUMIPairs) + ")");
+		System.out.println("Valid Fragments: " + validFragments);
+
+		System.out
+				.println("Reads on positive strand: " + readsOnPositiveStrand);
+		System.out
+				.println("Reads on negative strand: " + readsOnNegativeStrand);
+		System.out.println("Fragments from positive strand: "
+				+ fragmentsFromPositiveStrand);
+		System.out.println("Fragments from negative strand: "
+				+ fragmentsFromNegativeStrand);
+	}
+
 	public long getTotalUMIPairs()
 	{
 		return totalUMIPairs;
@@ -506,5 +524,25 @@ public class ClusterCollectionBuilder
 	public long getInvalidFragments()
 	{
 		return invalidFragments;
+	}
+
+	public long getReadsOnPositiveStrand()
+	{
+		return readsOnPositiveStrand;
+	}
+
+	public long getReadsOnNegativeStrand()
+	{
+		return readsOnNegativeStrand;
+	}
+
+	public long getFragmentsFromPositiveStrand()
+	{
+		return fragmentsFromPositiveStrand;
+	}
+
+	public long getFragmentsFromNegativeStrand()
+	{
+		return fragmentsFromNegativeStrand;
 	}
 }

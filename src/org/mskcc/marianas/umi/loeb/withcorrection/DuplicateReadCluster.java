@@ -10,6 +10,7 @@ import java.util.Map;
 import org.mskcc.juber.genotype.Genotype;
 import org.mskcc.juber.genotype.GenotypeEventType;
 import org.mskcc.juber.genotype.GenotypeID;
+import org.mskcc.marianas.util.StaticResources;
 
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
@@ -25,7 +26,7 @@ import htsjdk.samtools.reference.IndexedFastaSequenceFile;
  */
 public class DuplicateReadCluster
 {
-	private static final IndexedFastaSequenceFile referenceFasta = ProcessDuplexUMIBamFirstPass
+	private static final IndexedFastaSequenceFile referenceFasta = StaticResources
 			.getReference();
 	private static final int maxReadLength = 150;
 	private static final int lastPileupIndex = maxReadLength - 1;

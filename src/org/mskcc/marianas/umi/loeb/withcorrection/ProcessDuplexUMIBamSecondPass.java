@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.util.List;
 
 import org.mskcc.marianas.util.ClusterCollectionBuilder;
+import org.mskcc.marianas.util.StaticResources;
 import org.mskcc.marianas.util.Util;
 
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
@@ -25,13 +26,6 @@ import htsjdk.samtools.util.Interval;
  */
 public class ProcessDuplexUMIBamSecondPass
 {
-	private static IndexedFastaSequenceFile referenceFasta;
-
-	public static IndexedFastaSequenceFile getReference()
-	{
-		return referenceFasta;
-	}
-
 	/**
 	 * @param args
 	 *            args[0] - bam file; args[1] - bed file; args[2] - UMI allowed
@@ -47,9 +41,8 @@ public class ProcessDuplexUMIBamSecondPass
 		int UMIMismatches = Integer.parseInt(args[2]);
 		int wobble = Integer.parseInt(args[3]);
 		// set the reference fasta
-		referenceFasta = new IndexedFastaSequenceFile(new File(args[4]));
-		String R1FastqName = args[5];
-		File outputFolder = new File(args[6]);
+		new StaticResources(new IndexedFastaSequenceFile(new File(args[4])));
+		File outputFolder = new File(args[5]);
 
 		// no args after this point
 
@@ -63,14 +56,14 @@ public class ProcessDuplexUMIBamSecondPass
 		List<Interval> intervals = Util.loadIntervals(bedFile);
 
 		File firstPassFile = new File(outputFolder,
-				R1FastqName + ".first-pass.txt");
+				"first-pass.mate-position-sorted.txt");
 
 		System.out.println("Marianas Loeb UMI Second Pass");
 		System.out.println("Processing " + firstPassFile.getAbsolutePath()
 				+ " to produce fastqs");
 
-		secondPass(bamFile, intervals, UMIMismatches, wobble, R1FastqName,
-				outputFolder, firstPassFile);
+		secondPass(bamFile, intervals, UMIMismatches, wobble, outputFolder,
+				firstPassFile);
 
 		long end = System.currentTimeMillis();
 		System.out.println("Finished processing in " + ((end - start) / 1000)
@@ -78,18 +71,17 @@ public class ProcessDuplexUMIBamSecondPass
 	}
 
 	private static void secondPass(File bamFile, List<Interval> intervals,
-			int mismatches, int wobble, String R1FastqName, File outputFolder,
-			File firstPassFile) throws Exception
+			int mismatches, int wobble, File outputFolder, File firstPassFile)
+			throws Exception
 	{
 		BufferedReader firstPassReader = new BufferedReader(
 				new FileReader(firstPassFile));
 
 		BufferedWriter fastq1 = new BufferedWriter(
-				new FileWriter(new File(outputFolder, R1FastqName + ".fastq")));
+				new FileWriter(new File(outputFolder, "collapsed-R1.fastq")));
 
-		String R2FastqName = R1FastqName.replace("_R1_", "_R2_");
 		BufferedWriter fastq2 = new BufferedWriter(
-				new FileWriter(new File(outputFolder, R2FastqName + ".fastq")));
+				new FileWriter(new File(outputFolder, "collapsed-R2.fastq")));
 
 		ClusterCollectionBuilder clusterBuilder = new ClusterCollectionBuilder(
 				bamFile, wobble, mismatches, false);
@@ -102,6 +94,7 @@ public class ProcessDuplexUMIBamSecondPass
 		int wantedStartPosition = -1;
 
 		// go over first pass clusters one by one
+		// find corresponding second pass clusters
 		while ((line = firstPassReader.readLine()) != null)
 		{
 			// words[2] = UMI, words[5] = mateContigIndex, words[6] =
@@ -115,7 +108,7 @@ public class ProcessDuplexUMIBamSecondPass
 					wantedStartPosition, clusterCollection.getContigIndex(),
 					clusterCollection.getStartPosition());
 
-			// pass1 cluster position is greater than current pass1 cluster
+			// pass1 cluster mate position is greater than current pass2 cluster
 			// position
 			// skip forward
 			while (comp > 0)
@@ -126,7 +119,7 @@ public class ProcessDuplexUMIBamSecondPass
 						clusterCollection.getStartPosition());
 			}
 
-			// position match!
+			// positions match!
 			if (comp == 0)
 			{
 				DuplicateReadCluster[] clusters = clusterCollection
@@ -135,7 +128,7 @@ public class ProcessDuplexUMIBamSecondPass
 				// iterate and try to match UMI
 				for (int i = 0; i < clusters.length; i++)
 				{
-					// UMIs match
+					// UMIs match!
 					if (clusters[i] != null
 							&& clusters[i].getUMI().equals(words[2]))
 					{
@@ -148,8 +141,12 @@ public class ProcessDuplexUMIBamSecondPass
 			}
 			else if (comp < 0)
 			{
-				// TODO Check how many we are missing !!!
 				// missed the cluster !!!
+				
+				// TODO Check how many we are missing !!!
+				// TODO throw an exception
+
+				int a = 5;
 			}
 		}
 
@@ -158,25 +155,7 @@ public class ProcessDuplexUMIBamSecondPass
 		fastq1.close();
 		fastq2.close();
 
-		System.out.println(
-				"Total UMI Pairs: " + clusterBuilder.getTotalUMIPairs());
-		System.out
-				.println(
-						"Poly-G Fragments: " + clusterBuilder.getPolyGUMIs()
-								+ " ("
-								+ ((1.0 * clusterBuilder.getPolyGUMIs())
-										/ clusterBuilder.getTotalUMIPairs())
-								+ ")");
-		System.out
-				.println(
-						"Non-Poly-G but Invalid Fragments: "
-								+ clusterBuilder.getInvalidFragments() + " ("
-								+ ((1.0 * clusterBuilder.getInvalidFragments())
-										/ clusterBuilder.getTotalUMIPairs())
-								+ ")");
-		System.out.println(
-				"Valid Fragments: " + clusterBuilder.getValidFragments());
-
+		clusterBuilder.printNumbers();
 	}
 
 	/**
@@ -203,34 +182,36 @@ public class ProcessDuplexUMIBamSecondPass
 	private static void writeReadPair(String[] read1, String[] read2,
 			BufferedWriter fastq1, BufferedWriter fastq2) throws IOException
 	{
-		fastq1.write(readName(read1));
+		String readName = makeReadName(read1, read2);
+		fastq1.write(readName);
 		fastq1.write("\n");
 		fastq1.write(read1[8]);
 		fastq1.write("\n+\n");
 		fastq1.write(read1[9]);
 		fastq1.write("\n");
 
-		fastq1.write(readName(read2));
-		fastq1.write("\n");
-		fastq1.write(read2[8]);
-		fastq1.write("\n+\n");
-		fastq1.write(read2[9]);
-		fastq1.write("\n");
+		fastq2.write(readName);
+		fastq2.write("\n");
+		fastq2.write(read2[8]);
+		fastq2.write("\n+\n");
+		fastq2.write(read2[9]);
+		fastq2.write("\n");
 
 		fastq1.flush();
 		fastq2.flush();
 
 	}
 
-	private static String readName(String[] consensusSeqInfo)
+	private static String makeReadName(String[] read1Info, String[] read2Info)
 	{
 		StringBuilder builder = new StringBuilder("@Marianas:");
 
-		builder.append(consensusSeqInfo[0]).append(':')
-				.append(consensusSeqInfo[1]).append(':')
-				.append(consensusSeqInfo[2]).append(':')
-				.append(consensusSeqInfo[3]).append(':')
-				.append(consensusSeqInfo[4]);
+		builder.append(read1Info[2]).append(':').append(read1Info[0])
+				.append(':').append(read1Info[1]).append(':')
+				.append(read1Info[3]).append(':').append(read1Info[4])
+				.append(':').append(read2Info[0]).append(':')
+				.append(read2Info[1]).append(':').append(read2Info[3])
+				.append(':').append(read2Info[4]);
 
 		return builder.toString();
 	}

@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.util.List;
 
 import org.mskcc.marianas.util.ClusterCollectionBuilder;
+import org.mskcc.marianas.util.StaticResources;
 import org.mskcc.marianas.util.Util;
 
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
@@ -23,13 +24,6 @@ import htsjdk.samtools.util.Interval;
  */
 public class ProcessDuplexUMIBamFirstPass
 {
-	private static IndexedFastaSequenceFile referenceFasta;
-
-	public static IndexedFastaSequenceFile getReference()
-	{
-		return referenceFasta;
-	}
-
 	/**
 	 * @param args
 	 *            args[0] - bam file; args[1] - bed file; args[2] - UMI allowed
@@ -44,9 +38,8 @@ public class ProcessDuplexUMIBamFirstPass
 		int UMIMismatches = Integer.parseInt(args[2]);
 		int wobble = Integer.parseInt(args[3]);
 		// set the reference fasta
-		referenceFasta = new IndexedFastaSequenceFile(new File(args[4]));
-		String R1FastqName = args[5];
-		File outputFolder = new File(args[6]);
+		new StaticResources(new IndexedFastaSequenceFile(new File(args[4])));
+		File outputFolder = new File(args[5]);
 
 		// no args after this point
 
@@ -59,8 +52,7 @@ public class ProcessDuplexUMIBamFirstPass
 		// go through the intervals in the given bed file and collect numbers
 		List<Interval> intervals = Util.loadIntervals(bedFile);
 
-		File firstPassFile = new File(outputFolder,
-				R1FastqName + ".first-pass.txt");
+		File firstPassFile = new File(outputFolder, "first-pass.txt");
 
 		System.out.println("Marianas Loeb UMI First Pass");
 		System.out.println("Processing " + bamFile.getName());
@@ -95,31 +87,14 @@ public class ProcessDuplexUMIBamFirstPass
 				break;
 			}
 
-			recordPositiveStrandClusterCollection(clusterCollection, firstPassWriter);
+			recordPositiveStrandClusterCollection(clusterCollection,
+					firstPassWriter);
 		}
 
 		clusterBuilder.close();
 		firstPassWriter.close();
 
-		System.out.println(
-				"Total UMI Pairs: " + clusterBuilder.getTotalUMIPairs());
-		System.out
-				.println(
-						"Poly-G Fragments: " + clusterBuilder.getPolyGUMIs()
-								+ " ("
-								+ ((1.0 * clusterBuilder.getPolyGUMIs())
-										/ clusterBuilder.getTotalUMIPairs())
-								+ ")");
-		System.out
-				.println(
-						"Non-Poly-G but Invalid Fragments: "
-								+ clusterBuilder.getInvalidFragments() + " ("
-								+ ((1.0 * clusterBuilder.getInvalidFragments())
-										/ clusterBuilder.getTotalUMIPairs())
-								+ ")");
-		System.out.println(
-				"Valid Fragments: " + clusterBuilder.getValidFragments());
-
+		clusterBuilder.printNumbers();
 	}
 
 	private static void recordPositiveStrandClusterCollection(
