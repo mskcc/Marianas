@@ -1,7 +1,7 @@
 /**
  * 
  */
-package org.mskcc.marianas.umi.loeb.withcorrection;
+package org.mskcc.marianas.umi.loeb;
 
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 

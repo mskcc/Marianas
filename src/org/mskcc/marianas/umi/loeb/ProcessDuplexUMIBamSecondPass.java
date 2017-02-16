@@ -1,7 +1,7 @@
 /**
  * 
  */
-package org.mskcc.marianas.umi.loeb.withcorrection;
+package org.mskcc.marianas.umi.loeb;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -30,7 +30,7 @@ public class ProcessDuplexUMIBamSecondPass
 	 * @param args
 	 *            args[0] - bam file; args[1] - bed file; args[2] - UMI allowed
 	 *            mismatches; args[3] - UMI allowed wobble; args[4] - reference
-	 *            fasta; args[5] - R1 fastq name; args[6] - output folder
+	 *            fasta; args[5] - output folder
 	 * 
 	 * @throws Exception
 	 */
@@ -142,7 +142,7 @@ public class ProcessDuplexUMIBamSecondPass
 			else if (comp < 0)
 			{
 				// missed the cluster !!!
-				
+
 				// TODO Check how many we are missing !!!
 				// TODO throw an exception
 
