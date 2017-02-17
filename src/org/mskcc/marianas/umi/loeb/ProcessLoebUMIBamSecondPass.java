@@ -24,7 +24,7 @@ import htsjdk.samtools.util.Interval;
  *         Generate UMI metrics from a bam file
  *
  */
-public class ProcessDuplexUMIBamSecondPass
+public class ProcessLoebUMIBamSecondPass
 {
 	/**
 	 * @param args

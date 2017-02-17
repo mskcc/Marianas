@@ -30,7 +30,7 @@ import org.mskcc.marianas.util.Util;
  *         4. copy sample sheets
  *
  */
-public class ProcessDuplexUMIFastq
+public class ProcessLoebUMIFastq
 {
 
 	/**
@@ -100,7 +100,7 @@ public class ProcessDuplexUMIFastq
 			garbage2 = fastq2.readLine();
 			qual2 = fastq2.readLine();
 
-			DuplexUMIReadPair readPair = new DuplexUMIReadPair(seq1, qual1,
+			LoebUMIReadPair readPair = new LoebUMIReadPair(seq1, qual1,
 					seq2, qual2, UMILength, constantRegion);
 
 			// invalid read pair, for whatever reason

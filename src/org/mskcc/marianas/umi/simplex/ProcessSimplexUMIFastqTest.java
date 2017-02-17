@@ -5,7 +5,7 @@ package org.mskcc.marianas.umi.simplex;
 
 import java.io.IOException;
 
-import org.mskcc.marianas.umi.loeb.ProcessDuplexUMIFastq;
+import org.mskcc.marianas.umi.loeb.ProcessLoebUMIFastq;
 
 /**
  * @author Juber Patel
@@ -28,7 +28,7 @@ public class ProcessSimplexUMIFastqTest
 		String barcodeIndex = "AGTACAAG";
 		String projectFolder = "umi/Project_UMI";
 
-		ProcessDuplexUMIFastq.main(new String[] { read1Fastq, UMILength, barcodeIndex,
+		ProcessLoebUMIFastq.main(new String[] { read1Fastq, UMILength, barcodeIndex,
 				projectFolder });
 	}
 }

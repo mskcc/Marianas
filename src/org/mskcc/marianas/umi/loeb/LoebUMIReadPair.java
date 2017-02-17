@@ -9,13 +9,13 @@ import org.mskcc.marianas.util.Util;
  * @author Juber Patel
  *
  */
-public class DuplexUMIReadPair
+public class LoebUMIReadPair
 {
 
 	private UMIAndRead read1;
 	private UMIAndRead read2;
 
-	public DuplexUMIReadPair(String seq1, String qual1, String seq2,
+	public LoebUMIReadPair(String seq1, String qual1, String seq2,
 			String qual2, int UMILength, String constantRegion)
 	{
 		read1 = process(seq1, qual1, UMILength, constantRegion);
@@ -37,7 +37,7 @@ public class DuplexUMIReadPair
 	 * @param constantRegion
 	 * @return
 	 */
-	private DuplexUMIReadPair.UMIAndRead process(String seq, String qual,
+	private LoebUMIReadPair.UMIAndRead process(String seq, String qual,
 			int UMILength, String constantRegion)
 	{
 		// check if there is the constant region at the correct position

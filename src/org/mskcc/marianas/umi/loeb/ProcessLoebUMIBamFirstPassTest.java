@@ -7,7 +7,7 @@ package org.mskcc.marianas.umi.loeb;
  * @author Juber Patel
  *
  */
-public class ProcessDuplexUMIBamSecondPassTest
+public class ProcessLoebUMIBamFirstPassTest
 {
 
 	/**
@@ -26,7 +26,7 @@ public class ProcessDuplexUMIBamSecondPassTest
 		String wobble = "2";
 		String referenceFasta = "/Users/patelj1/resources/hg19-ncbi/Homo_sapiens_assembly19.fasta";
 
-		ProcessDuplexUMIBamSecondPass.main(new String[] { bamFile, bedFile,
+		ProcessLoebUMIBamFirstPass.main(new String[] { bamFile, bedFile,
 				UMIMismatches, wobble, referenceFasta, outputFolder });
 
 	}
