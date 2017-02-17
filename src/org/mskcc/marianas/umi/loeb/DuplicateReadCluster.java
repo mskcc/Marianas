@@ -11,6 +11,7 @@ import org.mskcc.juber.genotype.Genotype;
 import org.mskcc.juber.genotype.GenotypeEventType;
 import org.mskcc.juber.genotype.GenotypeID;
 import org.mskcc.marianas.util.StaticResources;
+import org.mskcc.marianas.util.Util;
 
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
@@ -57,7 +58,6 @@ public class DuplicateReadCluster
 	private byte[] readBases;
 	private byte[] baseQualities;
 	private int readIndex;
-	private boolean duplicate = false;
 
 	private Map<String, Integer> matePositions;
 
@@ -356,9 +356,12 @@ public class DuplicateReadCluster
 	 * consensus sequences per strand first and then building the final cluster
 	 * consensus sequence.
 	 * 
+	 * @param positiveStrand
+	 *            does the consensus read map on the positive strand or negative
+	 *            strand?
 	 * @return
 	 */
-	public String consensusSequenceInfo()
+	public String consensusSequenceInfo(boolean positiveStrand)
 	{
 		// TODO This method will undergo revision as we determine how exactly we
 		// want to build the consensus sequence. There are many parameters to
@@ -463,6 +466,13 @@ public class DuplicateReadCluster
 		for (int i = 0; i < qualities.length; i++)
 		{
 			qualities[i] = 'S';
+		}
+
+		// reverse the strand if necessary
+		if (!positiveStrand)
+		{
+			sequence = Util.reverseComplement(sequence);
+			Util.reverse(qualities);
 		}
 
 		StringBuilder info = new StringBuilder();

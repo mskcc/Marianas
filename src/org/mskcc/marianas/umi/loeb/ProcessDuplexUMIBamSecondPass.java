@@ -132,8 +132,8 @@ public class ProcessDuplexUMIBamSecondPass
 					if (clusters[i] != null
 							&& clusters[i].getUMI().equals(words[2]))
 					{
-						String[] words2 = clusters[i].consensusSequenceInfo()
-								.split("\t");
+						String[] words2 = clusters[i]
+								.consensusSequenceInfo(false).split("\t");
 						writeReadPair(words, words2, fastq1, fastq2);
 						break;
 					}

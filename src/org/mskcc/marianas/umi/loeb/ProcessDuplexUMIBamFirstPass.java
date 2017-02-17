@@ -116,7 +116,7 @@ public class ProcessDuplexUMIBamFirstPass
 			}
 
 			// TODO decide what else you want to write for first pass
-			firstPassWriter.write(cluster.consensusSequenceInfo() + "\n");
+			firstPassWriter.write(cluster.consensusSequenceInfo(true) + "\n");
 		}
 
 		firstPassWriter.flush();

@@ -190,4 +190,15 @@ public class Util
 
 		return s.toString();
 	}
+
+	public static void reverse(char[] chars)
+	{
+		char t;
+		for (int i = 0, j = chars.length - 1; i < j; i++, j--)
+		{
+			t = chars[i];
+			chars[i] = chars[j];
+			chars[j] = t;
+		}
+	}
 }

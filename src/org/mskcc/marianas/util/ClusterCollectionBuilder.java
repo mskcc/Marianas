@@ -131,13 +131,6 @@ public class ClusterCollectionBuilder
 				// no change in currentPositionIndex, it remains equal to wobble
 				currentRecordWindow = reader.slide();
 
-				// DEBUG
-				if (currentRecordWindow[currentRecordWindow.length - 1]
-						.size() > 10)
-				{
-					int a = 5;
-				}
-
 				// basic logging
 				if (reader.getCurrentWindowStartPosition() % 10000000 == 0)
 				{
