@@ -53,7 +53,6 @@ public class ClusterCollectionBuilder
 	// UMI -> unmapped count map
 	private Map<String, Integer> unmapped;
 	private long totalUMIPairs;
-	private long polyGUMIs;
 	private long validFragments;
 	private long invalidFragments;
 	private long readsOnPositiveStrand;
@@ -292,14 +291,6 @@ public class ClusterCollectionBuilder
 
 			totalUMIPairs++;
 
-			// int maxGs = (UMIString.length() / 4) + 1;
-			int maxNucleotides = 10;
-			if (Util.poly(UMIString, 'A', maxNucleotides))
-			{
-				polyGUMIs++;
-				continue;
-			}
-
 			// only process read pairs that are concordant ie have proper
 			// orientation
 			// int concordance = isGoodAlignment(record);
@@ -482,10 +473,8 @@ public class ClusterCollectionBuilder
 	public void printNumbers()
 	{
 		System.out.println("Total UMI Pairs: " + totalUMIPairs);
-		System.out.println("Poly-G Fragments: " + polyGUMIs + " ("
-				+ ((1.0 * polyGUMIs) / totalUMIPairs) + ")");
 		System.out.println(
-				"Non-Poly-G but Invalid Fragments: " + invalidFragments + " ("
+				"Invalid Fragments: " + invalidFragments + " ("
 						+ ((1.0 * invalidFragments) / totalUMIPairs) + ")");
 		System.out.println("Valid Fragments: " + validFragments);
 
@@ -502,11 +491,6 @@ public class ClusterCollectionBuilder
 	public long getTotalUMIPairs()
 	{
 		return totalUMIPairs;
-	}
-
-	public long getPolyGUMIs()
-	{
-		return polyGUMIs;
 	}
 
 	public long getValidFragments()

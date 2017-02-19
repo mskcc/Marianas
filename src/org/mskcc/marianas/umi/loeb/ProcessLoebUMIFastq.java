@@ -51,19 +51,19 @@ public class ProcessLoebUMIFastq
 
 		int UMILength = Integer.parseInt(args[1]);
 		String constantRegion = args[2];
-		// int maxGs = (UMILength / 4) + 1;
-		int maxGs = 80;
+		int maxOccurrences = (UMILength / 4) + 1;
+		// int maxGs = 80;
 
 		// make sample folder
 		File projectFolder = new File(args[3]);
 		File sampleFolder = sampleFolder(projectFolder, new File(args[0]));
 		sampleFolder.mkdir();
-		
+
 		// copy samplesheet
 		Files.copy(sampleSheet.toPath(),
 				new File(sampleFolder, "SampleSheet.csv").toPath());
-		
-		//process fastq files
+
+		// process fastq files
 		String sampleName = sampleFolder.getName().substring(7);
 		// make output fastq files
 		File outFile1 = new File(sampleFolder, new File(args[0]).getName());
@@ -84,10 +84,9 @@ public class ProcessLoebUMIFastq
 		String garbage2 = null;
 		String qual1 = null;
 		String qual2 = null;
-		long goodUMIs = 0;
-		long polyGUMIs = 0;
-		long[] goodQuals = new long[UMILength * 2 + 1];
-		long[] polyGQuals = new long[UMILength * 2 + 1];
+		long[] UMICounts = new long[5];
+
+		long[][] quals = new long[5][UMILength * 2 + 1];
 
 		while ((name1 = fastq1.readLine()) != null)
 		{
@@ -100,8 +99,8 @@ public class ProcessLoebUMIFastq
 			garbage2 = fastq2.readLine();
 			qual2 = fastq2.readLine();
 
-			LoebUMIReadPair readPair = new LoebUMIReadPair(seq1, qual1,
-					seq2, qual2, UMILength, constantRegion);
+			LoebUMIReadPair readPair = new LoebUMIReadPair(seq1, qual1, seq2,
+					qual2, UMILength, constantRegion);
 
 			// invalid read pair, for whatever reason
 			if (!(readPair.read1HasUMI() && readPair.read2HasUMI()))
@@ -110,17 +109,32 @@ public class ProcessLoebUMIFastq
 			}
 
 			String UMI = readPair.compositeUMI();
-			String UMIQuals = readPair.compositeUMIQuals();
+			String currentUMIQuals = readPair.compositeUMIQuals();
 
-			if (Util.polyG(UMI, maxGs))
+			if (Util.poly(UMI, 'A', maxOccurrences))
 			{
-				polyGUMIs++;
-				addQualities(polyGQuals, UMIQuals);
+				UMICounts[1]++;
+				addQualities(quals[1], currentUMIQuals);
+			}
+			else if (Util.poly(UMI, 'C', maxOccurrences))
+			{
+				UMICounts[2]++;
+				addQualities(quals[2], currentUMIQuals);
+			}
+			else if (Util.poly(UMI, 'G', maxOccurrences))
+			{
+				UMICounts[3]++;
+				addQualities(quals[3], currentUMIQuals);
+			}
+			else if (Util.poly(UMI, 'T', maxOccurrences))
+			{
+				UMICounts[4]++;
+				addQualities(quals[4], currentUMIQuals);
 			}
 			else
 			{
-				goodUMIs++;
-				addQualities(goodQuals, UMIQuals);
+				UMICounts[0]++;
+				addQualities(quals[0], currentUMIQuals);
 			}
 
 			// write read1
@@ -145,7 +159,7 @@ public class ProcessLoebUMIFastq
 		out1.close();
 		out2.close();
 
-		writeQualities(sampleName, polyGQuals, polyGUMIs, goodQuals, goodUMIs);
+		writeQualities(sampleName, quals, UMICounts);
 	}
 
 	private static void addQualities(long[] quals, String UMIQuals)
@@ -156,37 +170,39 @@ public class ProcessLoebUMIFastq
 		}
 	}
 
-	private static void writeQualities(String sampleName, long[] polyGQuals,
-			long polyGUMIs, long[] goodQuals, long goodUMIs) throws IOException
+	private static void writeQualities(String sampleName, long[][] quals,
+			long[] UMICounts) throws IOException
 	{
 		BufferedWriter writer = new BufferedWriter(
 				new FileWriter(new File(sampleName + ".qualities.txt")));
 		writer.write("Position\tAveragePhred\tGroup\n");
 
 		// print position and averages
-		for (int i = 0; i < polyGQuals.length; i++)
+		for (int i = 0; i < quals[0].length; i++)
 		{
+			double sum = 0;
+			double count = 0;
+			for (int j = 0; j < quals.length; j++)
+			{
+				sum += quals[j][i];
+				count += UMICounts[j];
+			}
+
+			double phred = (sum * 1.0) / count;
+
 			writer.write((i + 1) + "\t");
-			double phred = ((goodQuals[i] + polyGQuals[i]) * 1.0)
-					/ (goodUMIs + polyGUMIs);
 			writer.write(phred + "\t");
 			writer.write("All\n");
 		}
 
-		for (int i = 0; i < goodQuals.length; i++)
+		for (int i = 0; i < quals[0].length; i++)
 		{
-			writer.write((i + 1) + "\t");
-			double phred = (goodQuals[i] * 1.0) / goodUMIs;
-			writer.write(phred + "\t");
-			writer.write("Good\n");
-		}
-
-		for (int i = 0; i < polyGQuals.length; i++)
-		{
-			writer.write((i + 1) + "\t");
-			double phred = (polyGQuals[i] * 1.0) / polyGUMIs;
-			writer.write(phred + "\t");
-			writer.write("PolyG\n");
+			for (int j = 0; j < quals.length; j++)
+			{
+				writer.write((i + 1) + "\t");
+				writer.write((quals[j][i] * 1.0) / UMICounts[j] + "\t");
+				writer.write(j + "\n");
+			}
 		}
 
 		writer.close();
