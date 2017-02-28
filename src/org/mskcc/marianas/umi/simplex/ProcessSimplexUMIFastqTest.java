@@ -5,7 +5,7 @@ package org.mskcc.marianas.umi.simplex;
 
 import java.io.IOException;
 
-import org.mskcc.marianas.umi.loeb.ProcessLoebUMIFastq;
+import org.mskcc.marianas.umi.duplex.ProcessLoebUMIFastq;
 
 /**
  * @author Juber Patel

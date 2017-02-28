@@ -14,8 +14,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.mskcc.marianas.umi.loeb.DuplicateReadCluster;
-import org.mskcc.marianas.umi.loeb.DuplicateReadClusterCollection;
+import org.mskcc.marianas.umi.duplex.DuplicateReadCluster;
+import org.mskcc.marianas.umi.duplex.DuplicateReadClusterCollection;
 import org.mskcc.marianas.util.CustomCaptureException;
 import org.mskcc.marianas.util.Util;
 

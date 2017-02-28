@@ -15,8 +15,8 @@ import org.apache.commons.pool2.ObjectPool;
 import org.apache.commons.pool2.PooledObjectFactory;
 import org.apache.commons.pool2.impl.GenericObjectPool;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
-import org.mskcc.marianas.umi.loeb.DuplicateReadCluster;
-import org.mskcc.marianas.umi.loeb.DuplicateReadClusterCollection;
+import org.mskcc.marianas.umi.duplex.DuplicateReadCluster;
+import org.mskcc.marianas.umi.duplex.DuplicateReadClusterCollection;
 
 import htsjdk.samtools.SAMRecord;
 

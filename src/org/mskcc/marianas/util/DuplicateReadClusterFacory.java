@@ -6,7 +6,7 @@ package org.mskcc.marianas.util;
 import org.apache.commons.pool2.BasePooledObjectFactory;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
-import org.mskcc.marianas.umi.loeb.DuplicateReadCluster;
+import org.mskcc.marianas.umi.duplex.DuplicateReadCluster;
 
 /**
  * @author Juber Patel

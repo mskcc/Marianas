@@ -1,4 +1,4 @@
-package org.mskcc.marianas.umi.loeb;
+package org.mskcc.marianas.umi.duplex;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;

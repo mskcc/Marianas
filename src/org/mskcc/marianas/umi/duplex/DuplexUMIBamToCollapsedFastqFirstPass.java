@@ -1,7 +1,7 @@
 /**
  * 
  */
-package org.mskcc.marianas.umi.loeb;
+package org.mskcc.marianas.umi.duplex;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -22,7 +22,7 @@ import htsjdk.samtools.util.Interval;
  *         Generate UMI metrics from a bam file
  *
  */
-public class ProcessLoebUMIBamFirstPass
+public class DuplexUMIBamToCollapsedFastqFirstPass
 {
 	/**
 	 * @param args

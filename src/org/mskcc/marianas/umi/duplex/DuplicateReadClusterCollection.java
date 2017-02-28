@@ -1,7 +1,7 @@
 /**
  * 
  */
-package org.mskcc.marianas.umi.loeb;
+package org.mskcc.marianas.umi.duplex;
 
 import java.util.HashMap;
 import java.util.Map;
