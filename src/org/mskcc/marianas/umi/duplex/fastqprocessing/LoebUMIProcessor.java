@@ -1,7 +1,7 @@
 /**
  * 
  */
-package org.mskcc.marianas.umi.duplex;
+package org.mskcc.marianas.umi.duplex.fastqprocessing;
 
 import org.mskcc.marianas.util.Util;
 
@@ -9,13 +9,13 @@ import org.mskcc.marianas.util.Util;
  * @author Juber Patel
  *
  */
-public class LoebUMIReadPair
+public class LoebUMIProcessor
 {
 
 	private UMIAndRead read1;
 	private UMIAndRead read2;
 
-	public LoebUMIReadPair(String seq1, String qual1, String seq2,
+	public LoebUMIProcessor(String seq1, String qual1, String seq2,
 			String qual2, int UMILength, String constantRegion)
 	{
 		read1 = process(seq1, qual1, UMILength, constantRegion);
@@ -37,7 +37,7 @@ public class LoebUMIReadPair
 	 * @param constantRegion
 	 * @return
 	 */
-	private LoebUMIReadPair.UMIAndRead process(String seq, String qual,
+	private LoebUMIProcessor.UMIAndRead process(String seq, String qual,
 			int UMILength, String constantRegion)
 	{
 		// check if there is the constant region at the correct position

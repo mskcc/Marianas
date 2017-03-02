@@ -1,7 +1,7 @@
 /**
  * 
  */
-package org.mskcc.marianas.umi.duplex;
+package org.mskcc.marianas.umi.duplex.fastqprocessing;
 
 import java.io.IOException;
 

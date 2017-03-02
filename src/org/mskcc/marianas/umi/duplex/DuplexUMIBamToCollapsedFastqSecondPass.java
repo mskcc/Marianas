@@ -78,10 +78,10 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 				new FileReader(firstPassFile));
 
 		BufferedWriter fastq1 = new BufferedWriter(
-				new FileWriter(new File(outputFolder, "collapsed-R1.fastq")));
+				new FileWriter(new File(outputFolder, "collapsed_R1_.fastq")));
 
 		BufferedWriter fastq2 = new BufferedWriter(
-				new FileWriter(new File(outputFolder, "collapsed-R2.fastq")));
+				new FileWriter(new File(outputFolder, "collapsed_R2_.fastq")));
 
 		ClusterCollectionBuilder clusterBuilder = new ClusterCollectionBuilder(
 				bamFile, wobble, mismatches, false);

@@ -1,4 +1,4 @@
-package org.mskcc.marianas.umi.duplex;
+package org.mskcc.marianas.umi.duplex.fastqprocessing;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -30,7 +30,7 @@ import org.mskcc.marianas.util.Util;
  *         4. copy sample sheets
  *
  */
-public class ProcessLoebUMIFastq
+public class ProcessLoopUMIFastq
 {
 
 	/**
@@ -41,22 +41,25 @@ public class ProcessLoebUMIFastq
 	 */
 	public static void main(String[] args) throws IOException
 	{
+		File R1FastqFile = new File(args[0]);
+		int UMILength = Integer.parseInt(args[1]);
+		File outputProjectFolder = new File(args[2]);
+
+		// no args[] beyond this point
+
 		BufferedReader fastq1 = new BufferedReader(new InputStreamReader(
-				new GZIPInputStream(new FileInputStream(args[0]))));
-		BufferedReader fastq2 = new BufferedReader(
-				new InputStreamReader(new GZIPInputStream(
-						new FileInputStream(args[0].replace("_R1_", "_R2_")))));
-		File sampleSheet = new File(new File(args[0]).getParentFile(),
+				new GZIPInputStream(new FileInputStream(R1FastqFile))));
+		BufferedReader fastq2 = new BufferedReader(new InputStreamReader(
+				new GZIPInputStream(new FileInputStream(new File(
+						R1FastqFile.getParentFile(), R1FastqFile.getName()
+								.replace("_R1_", "_R2_"))))));
+		File sampleSheet = new File(R1FastqFile.getParentFile(),
 				"SampleSheet.csv");
 
-		int UMILength = Integer.parseInt(args[1]);
-		String constantRegion = args[2];
-		int maxOccurrences = (UMILength / 4) + 1;
-		// int maxGs = 80;
+		int maxOccurrences = UMILength + 1;
 
 		// make sample folder
-		File projectFolder = new File(args[3]);
-		File sampleFolder = sampleFolder(projectFolder, new File(args[0]));
+		File sampleFolder = sampleFolder(outputProjectFolder, R1FastqFile);
 		sampleFolder.mkdir();
 
 		// copy samplesheet
@@ -66,9 +69,9 @@ public class ProcessLoebUMIFastq
 		// process fastq files
 		String sampleName = sampleFolder.getName().substring(7);
 		// make output fastq files
-		File outFile1 = new File(sampleFolder, new File(args[0]).getName());
+		File outFile1 = new File(sampleFolder, R1FastqFile.getName());
 		File outFile2 = new File(sampleFolder,
-				new File(args[0]).getName().replace("_R1_", "_R2_"));
+				R1FastqFile.getName().replace("_R1_", "_R2_"));
 
 		BufferedWriter out1 = new BufferedWriter(new OutputStreamWriter(
 				new GZIPOutputStream(new FileOutputStream(outFile1))));
@@ -85,6 +88,7 @@ public class ProcessLoebUMIFastq
 		String qual1 = null;
 		String qual2 = null;
 		long[] UMICounts = new long[5];
+		long totalReadPairs = 0;
 
 		long[][] quals = new long[5][UMILength * 2 + 1];
 
@@ -99,8 +103,10 @@ public class ProcessLoebUMIFastq
 			garbage2 = fastq2.readLine();
 			qual2 = fastq2.readLine();
 
-			LoebUMIReadPair readPair = new LoebUMIReadPair(seq1, qual1, seq2,
-					qual2, UMILength, constantRegion);
+			totalReadPairs++;
+
+			LoopUMIProcessor readPair = new LoopUMIProcessor(seq1, qual1, seq2,
+					qual2, UMILength);
 
 			// invalid read pair, for whatever reason
 			if (!(readPair.read1HasUMI() && readPair.read2HasUMI()))
@@ -159,7 +165,32 @@ public class ProcessLoebUMIFastq
 		out1.close();
 		out2.close();
 
-		writeQualities(sampleName, quals, UMICounts);
+		// write basic stats
+		BufferedWriter writer = new BufferedWriter(new FileWriter(
+				new File(sampleFolder, sampleName + ".info.txt")));
+
+		long readPairsWithUMIs = UMICounts[0] + UMICounts[1] + UMICounts[2]
+				+ UMICounts[3] + UMICounts[4];
+
+		writer.write("Total read pairs: " + totalReadPairs + "\n");
+		writer.write("Read pairs with UMIs: " + readPairsWithUMIs + "/"
+				+ totalReadPairs + " ("
+				+ (readPairsWithUMIs * 1.0 / totalReadPairs) + ")\n");
+		writer.write("Poly-A: " + UMICounts[1] + "/" + readPairsWithUMIs + " ("
+				+ (UMICounts[1] * 1.0 / readPairsWithUMIs) + ")\n");
+		writer.write("Poly-G: " + UMICounts[2] + "/" + readPairsWithUMIs + " ("
+				+ (UMICounts[2] * 1.0 / readPairsWithUMIs) + ")\n");
+		writer.write("Poly-C: " + UMICounts[3] + "/" + readPairsWithUMIs + " ("
+				+ (UMICounts[3] * 1.0 / readPairsWithUMIs) + ")\n");
+		writer.write("Poly-T: " + UMICounts[4] + "/" + readPairsWithUMIs + " ("
+				+ (UMICounts[4] * 1.0 / readPairsWithUMIs) + ")\n");
+		writer.write("Good: " + UMICounts[0] + "/" + readPairsWithUMIs + " ("
+				+ (UMICounts[0] * 1.0 / readPairsWithUMIs) + ")\n");
+
+		writer.close();
+
+		// writeQualities(new File(sampleFolder, sampleName + ".qualities.txt"),
+		// quals, UMICounts);
 	}
 
 	private static void addQualities(long[] quals, String UMIQuals)
@@ -170,11 +201,11 @@ public class ProcessLoebUMIFastq
 		}
 	}
 
-	private static void writeQualities(String sampleName, long[][] quals,
+	private static void writeQualities(File qualitiesFile, long[][] quals,
 			long[] UMICounts) throws IOException
 	{
 		BufferedWriter writer = new BufferedWriter(
-				new FileWriter(new File(sampleName + ".qualities.txt")));
+				new FileWriter(qualitiesFile));
 		writer.write("Position\tAveragePhred\tGroup\n");
 
 		// print position and averages
@@ -209,6 +240,13 @@ public class ProcessLoebUMIFastq
 	}
 
 	private static File sampleFolder(File projectFolder, File sampleFastq)
+	{
+		String name = sampleFastq.getParentFile().getName();
+
+		return new File(projectFolder, name);
+	}
+
+	private static File sampleFolderOld(File projectFolder, File sampleFastq)
 	{
 		String[] parts = sampleFastq.getName().split("_");
 		StringBuilder sampleFolderName = new StringBuilder("Sample");
