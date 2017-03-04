@@ -10,6 +10,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.nio.file.Files;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -87,7 +89,7 @@ public class ProcessLoopUMIFastq
 		String garbage2 = null;
 		String qual1 = null;
 		String qual2 = null;
-		long[] UMICounts = new long[5];
+		long[] polyUMICounts = new long[5];
 		long totalReadPairs = 0;
 
 		long[][] quals = new long[5][UMILength * 2 + 1];
@@ -119,27 +121,27 @@ public class ProcessLoopUMIFastq
 
 			if (Util.poly(UMI, 'A', maxOccurrences))
 			{
-				UMICounts[1]++;
+				polyUMICounts[1]++;
 				addQualities(quals[1], currentUMIQuals);
 			}
 			else if (Util.poly(UMI, 'C', maxOccurrences))
 			{
-				UMICounts[2]++;
+				polyUMICounts[2]++;
 				addQualities(quals[2], currentUMIQuals);
 			}
 			else if (Util.poly(UMI, 'G', maxOccurrences))
 			{
-				UMICounts[3]++;
+				polyUMICounts[3]++;
 				addQualities(quals[3], currentUMIQuals);
 			}
 			else if (Util.poly(UMI, 'T', maxOccurrences))
 			{
-				UMICounts[4]++;
+				polyUMICounts[4]++;
 				addQualities(quals[4], currentUMIQuals);
 			}
 			else
 			{
-				UMICounts[0]++;
+				polyUMICounts[0]++;
 				addQualities(quals[0], currentUMIQuals);
 			}
 
@@ -166,26 +168,48 @@ public class ProcessLoopUMIFastq
 		out2.close();
 
 		// write basic stats
-		BufferedWriter writer = new BufferedWriter(new FileWriter(
-				new File(sampleFolder, sampleName + ".info.txt")));
+		BufferedWriter writer = new BufferedWriter(
+				new FileWriter(new File(sampleFolder, "info.txt")));
 
-		long readPairsWithUMIs = UMICounts[0] + UMICounts[1] + UMICounts[2]
-				+ UMICounts[3] + UMICounts[4];
+		long readPairsWithUMIs = polyUMICounts[0] + polyUMICounts[1]
+				+ polyUMICounts[2] + polyUMICounts[3] + polyUMICounts[4];
 
 		writer.write("Total read pairs: " + totalReadPairs + "\n");
 		writer.write("Read pairs with UMIs: " + readPairsWithUMIs + "/"
 				+ totalReadPairs + " ("
 				+ (readPairsWithUMIs * 1.0 / totalReadPairs) + ")\n");
-		writer.write("Poly-A: " + UMICounts[1] + "/" + readPairsWithUMIs + " ("
-				+ (UMICounts[1] * 1.0 / readPairsWithUMIs) + ")\n");
-		writer.write("Poly-G: " + UMICounts[2] + "/" + readPairsWithUMIs + " ("
-				+ (UMICounts[2] * 1.0 / readPairsWithUMIs) + ")\n");
-		writer.write("Poly-C: " + UMICounts[3] + "/" + readPairsWithUMIs + " ("
-				+ (UMICounts[3] * 1.0 / readPairsWithUMIs) + ")\n");
-		writer.write("Poly-T: " + UMICounts[4] + "/" + readPairsWithUMIs + " ("
-				+ (UMICounts[4] * 1.0 / readPairsWithUMIs) + ")\n");
-		writer.write("Good: " + UMICounts[0] + "/" + readPairsWithUMIs + " ("
-				+ (UMICounts[0] * 1.0 / readPairsWithUMIs) + ")\n");
+		writer.write("Poly-A: " + polyUMICounts[1] + "/" + readPairsWithUMIs
+				+ " (" + (polyUMICounts[1] * 1.0 / readPairsWithUMIs) + ")\n");
+		writer.write("Poly-G: " + polyUMICounts[2] + "/" + readPairsWithUMIs
+				+ " (" + (polyUMICounts[2] * 1.0 / readPairsWithUMIs) + ")\n");
+		writer.write("Poly-C: " + polyUMICounts[3] + "/" + readPairsWithUMIs
+				+ " (" + (polyUMICounts[3] * 1.0 / readPairsWithUMIs) + ")\n");
+		writer.write("Poly-T: " + polyUMICounts[4] + "/" + readPairsWithUMIs
+				+ " (" + (polyUMICounts[4] * 1.0 / readPairsWithUMIs) + ")\n");
+		writer.write("Good: " + polyUMICounts[0] + "/" + readPairsWithUMIs
+				+ " (" + (polyUMICounts[0] * 1.0 / readPairsWithUMIs) + ")\n");
+
+		writer.close();
+
+		writer = new BufferedWriter(
+				new FileWriter(new File(sampleFolder, "umi-frequencies.txt")));
+		Map<String, Integer> map = LoopUMIProcessor.UMIFrequencies;
+		for (String key : map.keySet())
+		{
+			int value = map.get(key);
+			writer.write(key + "\t" + value + "\n");
+		}
+
+		writer.close();
+
+		writer = new BufferedWriter(new FileWriter(
+				new File(sampleFolder, "composite-umi-frequencies.txt")));
+		map = LoopUMIProcessor.compositeUMIFrequencies;
+		for (String key : map.keySet())
+		{
+			int value = map.get(key);
+			writer.write(key + "\t" + value + "\n");
+		}
 
 		writer.close();
 

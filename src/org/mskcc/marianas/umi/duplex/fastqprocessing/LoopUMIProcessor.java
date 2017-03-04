@@ -3,7 +3,8 @@
  */
 package org.mskcc.marianas.umi.duplex.fastqprocessing;
 
-import org.mskcc.marianas.util.Util;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * @author Juber Patel
@@ -11,6 +12,9 @@ import org.mskcc.marianas.util.Util;
  */
 public class LoopUMIProcessor
 {
+
+	public static Map<String, Integer> UMIFrequencies = new HashMap<String, Integer>();
+	public static Map<String, Integer> compositeUMIFrequencies = new HashMap<String, Integer>();
 
 	private UMIReadBean read1;
 	private UMIReadBean read2;
@@ -21,6 +25,20 @@ public class LoopUMIProcessor
 		read1 = process(seq1, qual1, UMILength);
 		read2 = process(seq2, qual2, UMILength);
 
+		if (read1HasUMI() && read2HasUMI())
+		{
+			// update composite UMI frequencies
+			String compositeUMI = compositeUMI();
+			Integer freq = compositeUMIFrequencies.get(compositeUMI);
+			if (freq == null)
+			{
+				compositeUMIFrequencies.put(compositeUMI, 1);
+			}
+			else
+			{
+				compositeUMIFrequencies.put(compositeUMI, freq + 1);
+			}
+		}
 	}
 
 	/**
@@ -49,6 +67,17 @@ public class LoopUMIProcessor
 				seq.substring(UMILength + supportBases),
 				qual.substring(UMILength + supportBases),
 				seq.substring(0, UMILength), qual.substring(0, UMILength));
+
+		// update overall UMI frequencies
+		Integer freq = UMIFrequencies.get(read.UMI);
+		if (freq == null)
+		{
+			UMIFrequencies.put(read.UMI, 1);
+		}
+		else
+		{
+			UMIFrequencies.put(read.UMI, freq + 1);
+		}
 
 		return read;
 	}
