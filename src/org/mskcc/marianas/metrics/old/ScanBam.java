@@ -1,13 +1,14 @@
 /**
  * 
  */
-package org.mskcc.marianas.metrics;
+package org.mskcc.marianas.metrics.old;
 
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 
+import org.mskcc.marianas.metrics.CoveredRegions;
 import org.mskcc.marianas.util.CustomCaptureException;
 
 import htsjdk.samtools.SAMRecord;

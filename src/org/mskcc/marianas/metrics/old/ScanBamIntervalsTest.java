@@ -1,7 +1,7 @@
 /**
  * 
  */
-package org.mskcc.marianas.metrics;
+package org.mskcc.marianas.metrics.old;
 
 import java.io.IOException;
 
