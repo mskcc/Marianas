@@ -92,6 +92,9 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 		String[] words = null;
 		int wantedContigIndex = -1;
 		int wantedStartPosition = -1;
+		int totalClusters = 0;
+		int badClusters = 0;
+		int goodClusters = 0;
 
 		// go over first pass clusters one by one
 		// find corresponding second pass clusters
@@ -104,6 +107,24 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 			wantedContigIndex = Integer.parseInt(words[5]);
 			wantedStartPosition = Integer.parseInt(words[7]);
 
+			totalClusters++;
+
+			// apply filters
+			if (!goodToWrite(words))
+			{
+				badClusters++;
+				continue;
+			}
+
+			// this is specifically being done for the the subset bams used
+			// in testing that may have only one read from pairs near the
+			// end. Not needed for full bams
+			// end of bam file
+			if (clusterCollection == null)
+			{
+				break;
+			}
+
 			int comp = compareGenomicPositions(wantedContigIndex,
 					wantedStartPosition, clusterCollection.getContigIndex(),
 					clusterCollection.getStartPosition());
@@ -114,6 +135,15 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 			while (comp > 0)
 			{
 				clusterCollection = clusterBuilder.next();
+
+				// this is specifically being done for the the subset bams used
+				// in testing that may have only one read from pairs near the
+				// end. Not needed for full bams
+				// end of bam file
+				if (clusterCollection == null)
+				{
+					break;
+				}
 				comp = compareGenomicPositions(wantedContigIndex,
 						wantedStartPosition, clusterCollection.getContigIndex(),
 						clusterCollection.getStartPosition());
@@ -134,7 +164,9 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 					{
 						String[] words2 = clusters[i]
 								.consensusSequenceInfo(false).split("\t");
+
 						writeReadPair(words, words2, fastq1, fastq2);
+						goodClusters++;
 						break;
 					}
 				}
@@ -156,6 +188,46 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 		fastq2.close();
 
 		clusterBuilder.printNumbers();
+
+		System.out.println("Total first pass clusters: " + totalClusters);
+		System.out.println("Filtered out: " + badClusters + " ("
+				+ (badClusters * 1.0 / totalClusters) + ")");
+		System.out.println("Good clusters: " + goodClusters + " ("
+				+ (goodClusters * 1.0 / totalClusters) + ")");
+
+	}
+
+	/**
+	 * apply some basic filters to the current cluster
+	 * 
+	 * 1. singletons (only 1 read support on only one strand) not allowed
+	 * 2. if read support is on only 1 strand, it must be at least 3 reads
+	 * 
+	 * @param words
+	 * @return
+	 */
+	private static boolean goodToWrite(String[] words)
+	{
+		int psSupport = Integer.parseInt(words[3]);
+		int nsSupport = Integer.parseInt(words[4]);
+		int other = 0;
+
+		if (psSupport > 0 && nsSupport > 0)
+		{
+			return true;
+		}
+
+		if (psSupport == 0)
+		{
+			other = nsSupport;
+		}
+
+		if (nsSupport == 0)
+		{
+			other = psSupport;
+		}
+
+		return other >= 3;
 	}
 
 	/**

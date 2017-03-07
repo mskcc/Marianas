@@ -68,7 +68,16 @@ public class DuplicateReadClusterCollection
 			clusters.put(UMI, cluster);
 		}
 
-		cluster.add(record, positiveStrand);
+		try
+		{
+			cluster.add(record, positiveStrand);
+		}
+		catch (Exception e)
+		{
+			System.err.println("Problem processing record:");
+			System.err.println(record.getSAMString());
+			e.printStackTrace();
+		}
 	}
 
 	public DuplicateReadCluster[] getProcessedClusters()
