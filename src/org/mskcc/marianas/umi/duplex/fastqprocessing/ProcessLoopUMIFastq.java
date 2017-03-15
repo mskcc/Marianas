@@ -190,6 +190,7 @@ public class ProcessLoopUMIFastq
 				+ " (" + (polyUMICounts[0] * 1.0 / readPairsWithUMIs) + ")\n");
 
 		writer.close();
+		
 
 		writer = new BufferedWriter(
 				new FileWriter(new File(sampleFolder, "umi-frequencies.txt")));
