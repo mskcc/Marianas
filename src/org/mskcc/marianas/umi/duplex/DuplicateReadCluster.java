@@ -3,6 +3,9 @@
  */
 package org.mskcc.marianas.umi.duplex;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,12 +32,21 @@ public class DuplicateReadCluster
 {
 	private static final IndexedFastaSequenceFile referenceFasta = StaticResources
 			.getReference();
+	private static final Map<String, Map<Integer, Byte[]>> genotypes = StaticResources
+			.getGenotypes();
+	private static final String pos = StaticResources.getPositionOfInterest();
+
 	private static final int maxReadLength = 150;
 	private static final int lastPileupIndex = maxReadLength - 1;
 
 	private String contig;
 	private int startPosition;
 	private String UMI;
+
+	// for debug module
+	private String contigOfInterest;
+	private int positionOfInterest;
+	private List<StringBuilder> linesOfInterest;
 
 	private int psReadCount;
 	private int nsReadCount;
@@ -83,6 +95,15 @@ public class DuplicateReadCluster
 		nsSpecialGenotypes = new HashMap<GenotypeID, Genotype>();
 
 		matePositions = new HashMap<String, Integer>();
+
+		// if running in debug mode
+		if (pos != null)
+		{
+			String[] words = pos.split(":");
+			this.contigOfInterest = words[0];
+			this.positionOfInterest = Integer.parseInt(words[1].split("-")[0]);
+			this.linesOfInterest = new ArrayList<StringBuilder>();
+		}
 	}
 
 	/**
@@ -168,6 +189,22 @@ public class DuplicateReadCluster
 					if (pileupIndex >= 0 && pileupIndex <= lastPileupIndex)
 					{
 						positions[pileupIndex].addBase(readBases[readIndex]);
+
+						// if running in debug mode and at the right position
+						if (contigOfInterest != null
+								&& contigOfInterest.equals(record.getContig())
+								&& positionOfInterest == startPosition
+										+ pileupIndex)
+						{
+							StringBuilder line = new StringBuilder(
+									record.getReadName());
+							line.append("\t")
+									.append((char) readBases[readIndex]);
+							line.append("\t").append(contig).append(":")
+									.append(startPosition).append(":")
+									.append(UMI);
+							linesOfInterest.add(line);
+						}
 					}
 
 					// increment both pileup index and read index
@@ -356,12 +393,17 @@ public class DuplicateReadCluster
 	 * consensus sequences per strand first and then building the final cluster
 	 * consensus sequence.
 	 * 
+	 * If running in debug mode, write to the writer and return null. Otherwise
+	 * writer is null; return the consensus info
+	 * 
 	 * @param positiveStrand
 	 *            does the consensus read map on the positive strand or negative
 	 *            strand?
 	 * @return
+	 * @throws IOException
 	 */
-	public String consensusSequenceInfo(boolean positiveStrand)
+	public String consensusSequenceInfo(BufferedWriter writer,
+			boolean positiveStrand) throws IOException
 	{
 		// TODO This method will undergo revision as we determine how exactly we
 		// want to build the consensus sequence. There are many parameters to
@@ -387,7 +429,8 @@ public class DuplicateReadCluster
 		}
 
 		// build cluster consensus sequence.
-		// record a non-ref position iff it is present in both strands
+		// record a base that is not person's genotype iff it is present in both
+		// strands
 		for (int i = 0; i < psPositions.length; i++)
 		{
 			if (psConsensus[i] == nsConsensus[i])
@@ -396,7 +439,42 @@ public class DuplicateReadCluster
 			}
 			else
 			{
-				consensus[i] = psPositions[i].getRefBase();
+				// find this person's genotype. If not available, use ref base
+				Byte[] genotype = null;
+				Map<Integer, Byte[]> chrMap = genotypes.get(contig);
+				if (chrMap != null)
+				{
+					genotype = chrMap.get(startPosition + i);
+				}
+
+				if (genotype == null || genotype.length == 0)
+				{
+					genotype = new Byte[] { psPositions[i].getRefBase() };
+				}
+
+				// if either strand consensus is part of person's genotype,
+				// accept it.
+				
+				// TODO Assuming it is impossible to have 2 different bases as
+				// consensus where those bases are person's authentic genotype
+				int j;
+				for (j = 0; j < genotype.length; j++)
+				{
+					byte g = genotype[j];
+					if (psConsensus[i] == g || nsConsensus[i] == g)
+					{
+						consensus[i] = g;
+						break;
+					}
+				}
+
+				// could not assign genotype so far, choose the first from
+				// genotype array
+				if (j == genotype.length)
+				{
+					consensus[i] = genotype[0];
+				}
+
 			}
 
 			// what if one strand has alt and the other strand has N??
@@ -412,6 +490,34 @@ public class DuplicateReadCluster
 			}
 
 			consensusSequenceBuilder.append((char) b);
+		}
+
+		// if running in debug mode
+		if (contigOfInterest != null && contigOfInterest.equals(contig))
+		{
+			int baseOfInterestIndex = positionOfInterest - startPosition;
+
+			byte b = psConsensus[baseOfInterestIndex];
+			char psConsensusBase = (b == -1 ? 'N' : (char) b);
+
+			b = nsConsensus[baseOfInterestIndex];
+			char nsConsensusBase = (b == -1 ? 'N' : (char) b);
+
+			char consensusBase = consensusSequenceBuilder
+					.charAt(baseOfInterestIndex);
+
+			// print the read lines
+			for (StringBuilder line : linesOfInterest)
+			{
+				line.append("\t").append(psConsensusBase).append("\t")
+						.append(psReadCount).append("\t")
+						.append(nsConsensusBase).append("\t")
+						.append(nsReadCount).append("\t").append(consensusBase)
+						.append("\n");
+				writer.write(line.toString());
+			}
+
+			return null;
 		}
 
 		// Include insertions
@@ -483,7 +589,6 @@ public class DuplicateReadCluster
 				.append("\t").append(sequence).append("\t").append(qualities);
 
 		return info.toString();
-
 	}
 
 	private String getMatePosition()

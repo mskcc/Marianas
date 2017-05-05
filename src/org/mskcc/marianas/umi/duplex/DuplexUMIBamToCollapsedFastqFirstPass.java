@@ -26,7 +26,8 @@ public class DuplexUMIBamToCollapsedFastqFirstPass
 {
 	/**
 	 * @param args
-	 *            args[0] - bam file; args[1] - bed file; args[2] - UMI allowed
+	 *            args[0] - bam file; args[1] - pileup file; args[2] - UMI
+	 *            allowed
 	 *            mismatches; args[3] - UMI allowed wobble; args[4] - reference
 	 *            fasta; args[5] - R1 fastq name; args[6] - output folder
 	 * @throws Exception
@@ -34,38 +35,32 @@ public class DuplexUMIBamToCollapsedFastqFirstPass
 	public static void main(String[] args) throws Exception
 	{
 		File bamFile = new File(args[0]);
-		File bedFile = new File(args[1]);
+		File pileupFile = new File(args[1]);
 		int UMIMismatches = Integer.parseInt(args[2]);
 		int wobble = Integer.parseInt(args[3]);
 		// set the reference fasta
-		new StaticResources(new IndexedFastaSequenceFile(new File(args[4])));
+		new StaticResources(new IndexedFastaSequenceFile(new File(args[4])),
+				pileupFile, null);
 		File outputFolder = new File(args[5]);
 
 		// no args after this point
 
 		long start = System.currentTimeMillis();
 
-		// preliminaries
-		String fileName = bedFile.getName();
-		String intervalsLabel = fileName.substring(0, fileName.indexOf(".bed"));
-
-		// go through the intervals in the given bed file and collect numbers
-		List<Interval> intervals = Util.loadIntervals(bedFile);
-
 		File firstPassFile = new File(outputFolder, "first-pass.txt");
 
 		System.out.println("Marianas Loeb UMI First Pass");
 		System.out.println("Processing " + bamFile.getName());
 
-		firstPass(bamFile, intervals, UMIMismatches, wobble, firstPassFile);
+		firstPass(bamFile, UMIMismatches, wobble, firstPassFile);
 
 		long end = System.currentTimeMillis();
 		System.out.println("Finished processing in " + ((end - start) / 1000)
 				+ " seconds.");
 	}
 
-	private static void firstPass(File bamFile, List<Interval> intervals,
-			int mismatches, int wobble, File firstPassFile) throws Exception
+	private static void firstPass(File bamFile, int mismatches, int wobble,
+			File firstPassFile) throws Exception
 	{
 
 		BufferedWriter firstPassWriter = new BufferedWriter(
@@ -115,8 +110,8 @@ public class DuplexUMIBamToCollapsedFastqFirstPass
 				continue;
 			}
 
-			// TODO decide what else you want to write for first pass
-			firstPassWriter.write(cluster.consensusSequenceInfo(true) + "\n");
+			firstPassWriter
+					.write(cluster.consensusSequenceInfo(null, true) + "\n");
 		}
 
 		firstPassWriter.flush();

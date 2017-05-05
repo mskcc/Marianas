@@ -62,6 +62,7 @@ public class ClusterCollectionBuilder
 	private ObjectPool<DuplicateReadCluster> clusterPool;
 	private Comparator<DuplicateReadCluster> clusterCountComparator;
 	private boolean positiveStrand;
+	private boolean debugMode;
 
 	/**
 	 * 
@@ -78,6 +79,7 @@ public class ClusterCollectionBuilder
 		this.wobble = wobble;
 		this.mismatches = mismatches;
 		this.positiveStrand = positiveStrand;
+		this.debugMode = StaticResources.getPositionOfInterest() != null;
 		this.reader = new SlidingWindowBamReader(bamFile, wobble * 2 + 1);
 		this.currentClusterWindow = new DuplicateReadClusterCollection[wobble
 				* 2 + 1];
@@ -284,7 +286,9 @@ public class ClusterCollectionBuilder
 			}
 
 			// only look at the reads mapping on the specified strand
-			if (!(positiveStrand ^ record.getReadNegativeStrandFlag()))
+			// unless you are running in debug mode. Then look at both strands
+			if (!debugMode
+					&& !(positiveStrand ^ record.getReadNegativeStrandFlag()))
 			{
 				continue;
 			}
@@ -473,9 +477,8 @@ public class ClusterCollectionBuilder
 	public void printNumbers()
 	{
 		System.out.println("Total UMI Pairs: " + totalUMIPairs);
-		System.out.println(
-				"Invalid Fragments: " + invalidFragments + " ("
-						+ ((1.0 * invalidFragments) / totalUMIPairs) + ")");
+		System.out.println("Invalid Fragments: " + invalidFragments + " ("
+				+ ((1.0 * invalidFragments) / totalUMIPairs) + ")");
 		System.out.println("Valid Fragments: " + validFragments);
 
 		System.out

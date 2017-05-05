@@ -9,14 +9,11 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.List;
 
 import org.mskcc.marianas.util.ClusterCollectionBuilder;
 import org.mskcc.marianas.util.StaticResources;
-import org.mskcc.marianas.util.Util;
 
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
-import htsjdk.samtools.util.Interval;
 
 /**
  * @author Juber Patel
@@ -37,23 +34,17 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 	public static void main(String[] args) throws Exception
 	{
 		File bamFile = new File(args[0]);
-		File bedFile = new File(args[1]);
+		File pileupFile = new File(args[1]);
 		int UMIMismatches = Integer.parseInt(args[2]);
 		int wobble = Integer.parseInt(args[3]);
 		// set the reference fasta
-		new StaticResources(new IndexedFastaSequenceFile(new File(args[4])));
+		new StaticResources(new IndexedFastaSequenceFile(new File(args[4])),
+				pileupFile, null);
 		File outputFolder = new File(args[5]);
 
 		// no args after this point
 
 		long start = System.currentTimeMillis();
-
-		// preliminaries
-		String fileName = bedFile.getName();
-		String intervalsLabel = fileName.substring(0, fileName.indexOf(".bed"));
-
-		// go through the intervals in the given bed file and collect numbers
-		List<Interval> intervals = Util.loadIntervals(bedFile);
 
 		File firstPassFile = new File(outputFolder,
 				"first-pass.mate-position-sorted.txt");
@@ -62,17 +53,15 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 		System.out.println("Processing " + firstPassFile.getAbsolutePath()
 				+ " to produce fastqs");
 
-		secondPass(bamFile, intervals, UMIMismatches, wobble, outputFolder,
-				firstPassFile);
+		secondPass(bamFile, UMIMismatches, wobble, outputFolder, firstPassFile);
 
 		long end = System.currentTimeMillis();
 		System.out.println("Finished processing in " + ((end - start) / 1000)
 				+ " seconds.");
 	}
 
-	private static void secondPass(File bamFile, List<Interval> intervals,
-			int mismatches, int wobble, File outputFolder, File firstPassFile)
-			throws Exception
+	private static void secondPass(File bamFile, int mismatches, int wobble,
+			File outputFolder, File firstPassFile) throws Exception
 	{
 		BufferedReader firstPassReader = new BufferedReader(
 				new FileReader(firstPassFile));
@@ -163,7 +152,7 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 							&& clusters[i].getUMI().equals(words[2]))
 					{
 						String[] words2 = clusters[i]
-								.consensusSequenceInfo(false).split("\t");
+								.consensusSequenceInfo(null, false).split("\t");
 
 						writeReadPair(words, words2, fastq1, fastq2);
 						goodClusters++;
@@ -228,6 +217,7 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 		}
 
 		return other >= 3;
+
 	}
 
 	/**

@@ -24,7 +24,7 @@ public class CalculateEditDistance
 		List<String> names = new ArrayList<String>();
 
 		BufferedReader reader = new BufferedReader(
-				new FileReader("barcodeKey96.txt"));
+				new FileReader("/Users/patelj1/software/InnovationMetaPipeline/impact-pipeline-resources/barcodeKey96.txt"));
 		System.out.println("Barcode1\tName1\tBarcode2\tName2\tDistance");
 
 		String line = null;
