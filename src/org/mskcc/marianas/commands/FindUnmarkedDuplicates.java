@@ -1,7 +1,7 @@
 /**
  * 
  */
-package org.mskcc.marianas.util.commands;
+package org.mskcc.marianas.commands;
 
 import java.io.File;
 import java.io.IOException;

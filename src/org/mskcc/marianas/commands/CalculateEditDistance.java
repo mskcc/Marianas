@@ -1,4 +1,4 @@
-package org.mskcc.marianas.util.commands;
+package org.mskcc.marianas.commands;
 
 import java.io.BufferedReader;
 import java.io.FileReader;

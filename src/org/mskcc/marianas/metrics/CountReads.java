@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
+import org.mskcc.juber.intervals.IntervalNameMap;
 import org.mskcc.marianas.util.CustomCaptureException;
 import org.mskcc.marianas.util.Util;
 
@@ -56,14 +57,17 @@ public class CountReads
 		CoveredRegions coveredRegions = new CoveredRegions(bamFile.getName(),
 				coverageThreshold, geneListFile);
 
+		// load intervals
+		List<Interval> intervals = Util.loadIntervals(intervalsFile);
+		IntervalNameMap intervalNameMap = toIntervalNameMap(intervals);
+
 		// go through the bam file serially, collect general stats that do not
 		// depend on bed files
 		// also find regions with average coverage >= coverageThreshould
-		scanBam(readCounts, coveredRegions, bamFile);
+		scanBam(readCounts, coveredRegions, bamFile, intervalNameMap);
 
 		// go through the intervals in the given bed file and collect numbers
-		List<Interval> intervals = Util.loadIntervals(intervalsFile);
-		processBamAtIntervals(readCounts, bamFile, intervals);
+		// processBamAtIntervals(readCounts, bamFile, intervals);
 
 		coveredRegions.write();
 		readCounts.write();
@@ -74,7 +78,8 @@ public class CountReads
 	}
 
 	private static void scanBam(ReadCounts readCounts,
-			CoveredRegions coveredRegions, File bamFile) throws IOException
+			CoveredRegions coveredRegions, File bamFile,
+			IntervalNameMap intervalNameMap) throws IOException
 	{
 		System.out.println("Scanning entire " + bamFile.getName());
 
@@ -98,13 +103,29 @@ public class CountReads
 
 			readCounts.totalMappedReads++;
 
+			// check if on target
+			List<String> intersecting = intervalNameMap.getIntersecting(
+					record.getContig(), record.getAlignmentStart(),
+					record.getAlignmentEnd());
+
+			if (!intersecting.isEmpty())
+			{
+				readCounts.totalTargetReads++;
+			}
+
 			if (record.getDuplicateReadFlag())
 			{
 				readCounts.duplicateMappedReads++;
+
 			}
 			else
 			{
 				readCounts.uniqueMappedReads++;
+
+				if (!intersecting.isEmpty())
+				{
+					readCounts.uniqueTargetReads++;
+				}
 
 				// not a duplicate read, count towards covered regions
 				coveredRegions.recordAlignment(record);
@@ -115,46 +136,16 @@ public class CountReads
 		reader.close();
 	}
 
-	private static void processBamAtIntervals(ReadCounts readCounts,
-			File bamFile, List<Interval> intervals)
-					throws CustomCaptureException, IOException
+	private static IntervalNameMap toIntervalNameMap(List<Interval> intervals)
 	{
-		System.out.println("Scanning " + readCounts.targetLabel
-				+ " intervals in " + bamFile.getName());
-
-		SamReaderFactory factory = SamReaderFactory.makeDefault();
-		SamReader reader = factory.open(bamFile);
-		SAMFileHeader header = reader.getFileHeader();
-
+		// build the interval name map
+		IntervalNameMap intervalNameMap = new IntervalNameMap();
 		for (Interval interval : intervals)
 		{
-			String contigName = Util.guessCorrectContigName(header,
-					interval.getContig());
-
-			int start = interval.getStart();
-			int end = interval.getEnd();
-
-			SAMRecordIterator iterator = reader.query(contigName, start, end,
-					false);
-
-			// get the read count for this interval
-			while (iterator.hasNext())
-			{
-				SAMRecord record = iterator.next();
-				if (!record.getReadUnmappedFlag())
-				{
-					readCounts.totalTargetReads++;
-
-					if (!record.getDuplicateReadFlag())
-					{
-						readCounts.uniqueTargetReads++;
-					}
-				}
-			}
-
-			iterator.close();
+			intervalNameMap.add(interval.getContig(), interval.getStart() + 10,
+					interval.getEnd() - 10, interval.getName());
 		}
 
-		reader.close();
+		return intervalNameMap;
 	}
 }
