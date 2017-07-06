@@ -47,7 +47,6 @@ public class FindSpikedInAlleleFractions
 
 		for (SpikeInInfo spikeInInfo : spikeInInfos)
 		{
-
 			writer.write(spikeInInfo.getIdentifier() + "\t");
 			writer.write(spikeInInfo.method + "\t");
 			writer.write(spikeInInfo.getSite() + "\t");

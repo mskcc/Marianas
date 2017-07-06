@@ -13,6 +13,7 @@ import org.mskcc.marianas.util.ClusterCollectionBuilder;
 import org.mskcc.marianas.util.StaticResources;
 import org.mskcc.marianas.util.Util;
 
+import htsjdk.samtools.reference.FastaSequenceIndex;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import htsjdk.samtools.util.Interval;
 
@@ -39,8 +40,13 @@ public class DuplexUMIBamToCollapsedFastqFirstPass
 		int UMIMismatches = Integer.parseInt(args[2]);
 		int wobble = Integer.parseInt(args[3]);
 		// set the reference fasta
-		new StaticResources(new IndexedFastaSequenceFile(new File(args[4])),
-				pileupFile, null);
+		File refFastaFile = new File(args[4]);
+		File refFastaIndexFile = new File(args[4] + ".fai");
+		FastaSequenceIndex refFastaIndex = new FastaSequenceIndex(
+				refFastaIndexFile);
+		IndexedFastaSequenceFile refFasta = new IndexedFastaSequenceFile(
+				refFastaFile, refFastaIndex);
+		new StaticResources(refFasta, refFastaIndex, pileupFile, null);
 		File outputFolder = new File(args[5]);
 
 		// no args after this point
@@ -98,6 +104,7 @@ public class DuplexUMIBamToCollapsedFastqFirstPass
 	{
 		// TODO write all the needed information !!!
 
+		String consensusSequenceInfo = null;
 		// write clusters
 		DuplicateReadCluster[] processedClusters = clusterCollection
 				.getProcessedClusters();
@@ -110,8 +117,27 @@ public class DuplexUMIBamToCollapsedFastqFirstPass
 				continue;
 			}
 
-			firstPassWriter
-					.write(cluster.consensusSequenceInfo(null, true) + "\n");
+			try
+			{
+				consensusSequenceInfo = cluster.consensusSequenceInfo(null,
+						true);
+			}
+			catch (Exception e)
+			{
+				System.err.println(
+						"Problem creating consensus sequence info for cluster:");
+				System.err.println(cluster.getContig() + ":"
+						+ cluster.getStartPosition() + ":" + cluster.getUMI());
+				e.printStackTrace();
+				continue;
+				// System.exit(1);
+			}
+
+			// there is meaningful consensus sequence info
+			if (consensusSequenceInfo != null)
+			{
+				firstPassWriter.write(consensusSequenceInfo + "\n");
+			}
 		}
 
 		firstPassWriter.flush();

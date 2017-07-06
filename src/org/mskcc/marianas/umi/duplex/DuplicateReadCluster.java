@@ -20,7 +20,9 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.reference.FastaSequenceIndex;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
+import htsjdk.samtools.reference.ReferenceSequence;
 
 /**
  * @author Juber Patel
@@ -32,6 +34,9 @@ public class DuplicateReadCluster
 {
 	private static final IndexedFastaSequenceFile referenceFasta = StaticResources
 			.getReference();
+	private static final FastaSequenceIndex referenceFastaIndex = StaticResources
+			.getReferenceIndex();
+
 	private static final Map<String, Map<Integer, Byte[]>> genotypes = StaticResources
 			.getGenotypes();
 	private static final String pos = StaticResources.getPositionOfInterest();
@@ -119,14 +124,32 @@ public class DuplicateReadCluster
 		this.psReadCount = 0;
 		this.nsReadCount = 0;
 
-		referenceBases = referenceFasta.getSubsequenceAt(contig, startPosition,
-				startPosition + maxReadLength - 1).getBases();
+		int contigLength = referenceFasta.getSequenceDictionary()
+				.getSequence(contig).getSequenceLength();
+		int endPosition = startPosition + maxReadLength - 1;
+		if (endPosition > contigLength)
+		{
+			endPosition = contigLength;
+		}
+
+		referenceBases = referenceFasta
+				.getSubsequenceAt(contig, startPosition, endPosition)
+				.getBases();
 
 		// clean the pileup for reuse
-		for (int i = 0; i < psPositions.length; i++)
+		for (int i = 0; i < referenceBases.length; i++)
 		{
 			psPositions[i].reset(referenceBases[i]);
 			nsPositions[i].reset(referenceBases[i]);
+		}
+
+		// in case referenceBases has shorter length than psPositions and
+		// nsPositions.
+		// This could happen at the end of the contig (see above adjustment)
+		for (int i = referenceBases.length; i < psPositions.length; i++)
+		{
+			psPositions[i].reset((byte) 'N');
+			nsPositions[i].reset((byte) 'N');
 		}
 
 		psSpecialGenotypes.clear();
@@ -454,7 +477,7 @@ public class DuplicateReadCluster
 
 				// if either strand consensus is part of person's genotype,
 				// accept it.
-				
+
 				// TODO Assuming it is impossible to have 2 different bases as
 				// consensus where those bases are person's authentic genotype
 				int j;
@@ -548,7 +571,7 @@ public class DuplicateReadCluster
 
 		// trim trailing N's
 		int trimmedLength = consensusSequenceBuilder.length();
-		while (true)
+		while (trimmedLength > 0)
 		{
 			if (consensusSequenceBuilder.charAt(trimmedLength - 1) != 'N')
 			{
@@ -556,6 +579,12 @@ public class DuplicateReadCluster
 			}
 
 			trimmedLength--;
+		}
+		
+		// the consensus is all N's
+		if(trimmedLength == 0)
+		{
+			return null;
 		}
 
 		consensusSequenceBuilder.setLength(trimmedLength);

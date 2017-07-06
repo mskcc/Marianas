@@ -13,6 +13,7 @@ import java.io.IOException;
 import org.mskcc.marianas.util.ClusterCollectionBuilder;
 import org.mskcc.marianas.util.StaticResources;
 
+import htsjdk.samtools.reference.FastaSequenceIndex;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 
 /**
@@ -38,8 +39,13 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 		int UMIMismatches = Integer.parseInt(args[2]);
 		int wobble = Integer.parseInt(args[3]);
 		// set the reference fasta
-		new StaticResources(new IndexedFastaSequenceFile(new File(args[4])),
-				pileupFile, null);
+		File refFastaFile = new File(args[4]);
+		File refFastaIndexFile = new File(args[4] + ".fai");
+		FastaSequenceIndex refFastaIndex = new FastaSequenceIndex(
+				refFastaIndexFile);
+		IndexedFastaSequenceFile refFasta = new IndexedFastaSequenceFile(
+				refFastaFile, refFastaIndex);
+		new StaticResources(refFasta, refFastaIndex, pileupFile, null);
 		File outputFolder = new File(args[5]);
 
 		// no args after this point
@@ -84,6 +90,7 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 		int totalClusters = 0;
 		int badClusters = 0;
 		int goodClusters = 0;
+		String consensusSequenceInfo = null;
 
 		// go over first pass clusters one by one
 		// find corresponding second pass clusters
@@ -151,12 +158,31 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 					if (clusters[i] != null
 							&& clusters[i].getUMI().equals(words[2]))
 					{
-						String[] words2 = clusters[i]
-								.consensusSequenceInfo(null, false).split("\t");
+						try
+						{
+							consensusSequenceInfo = clusters[i]
+									.consensusSequenceInfo(null, false);
+						}
+						catch (Exception e)
+						{
+							System.err.println(
+									"Problem creating consensus sequence info for cluster:");
+							System.err.println(clusters[i].getContig() + ":"
+									+ clusters[i].getStartPosition() + ":"
+									+ clusters[i].getUMI());
+							e.printStackTrace();
+							continue;
+							// System.exit(1);
+						}
 
-						writeReadPair(words, words2, fastq1, fastq2);
-						goodClusters++;
-						break;
+						// there is meaningful consensus sequence info
+						if (consensusSequenceInfo != null)
+						{
+							String[] words2 = consensusSequenceInfo.split("\t");
+							writeReadPair(words, words2, fastq1, fastq2);
+							goodClusters++;
+							break;
+						}
 					}
 				}
 			}

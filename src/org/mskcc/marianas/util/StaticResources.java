@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import htsjdk.samtools.reference.FastaSequenceIndex;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 
 /**
@@ -24,12 +25,18 @@ import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 public class StaticResources
 {
 	private static IndexedFastaSequenceFile referenceFasta;
+	private static FastaSequenceIndex referenceFastaIndex;
 	private static Map<String, Map<Integer, Byte[]>> genotypes;
 	private static String positionOfInterest;
 
 	public static IndexedFastaSequenceFile getReference()
 	{
 		return referenceFasta;
+	}
+	
+	public static FastaSequenceIndex getReferenceIndex()
+	{
+		return referenceFastaIndex;
 	}
 
 	public static Map<String, Map<Integer, Byte[]>> getGenotypes()
@@ -43,9 +50,10 @@ public class StaticResources
 	}
 
 	public StaticResources(IndexedFastaSequenceFile referenceFasta,
-			File pileupFile, String positionOfInterest) throws IOException
+			FastaSequenceIndex refFastaIndex, File pileupFile, String positionOfInterest) throws IOException
 	{
 		StaticResources.referenceFasta = referenceFasta;
+		StaticResources.referenceFastaIndex = refFastaIndex;
 		StaticResources.positionOfInterest = positionOfInterest;
 
 		readGenotypes(pileupFile);

@@ -142,8 +142,20 @@ public class CountReads
 		IntervalNameMap intervalNameMap = new IntervalNameMap();
 		for (Interval interval : intervals)
 		{
-			intervalNameMap.add(interval.getContig(), interval.getStart() + 10,
-					interval.getEnd() - 10, interval.getName());
+			// shorten the interval so that we only count on target read when
+			// there is minReadOverlap
+			int minReadOverlap = 10;
+			int start = interval.getStart() + minReadOverlap;
+			int end = interval.getEnd() - minReadOverlap;
+			// interval is too short for further shortening
+			if (start > end)
+			{
+				start = end = (interval.getStart() + interval.getEnd()) / 2;
+			}
+
+			intervalNameMap.add(interval.getContig(), start, end,
+					interval.getName());
+
 		}
 
 		return intervalNameMap;
