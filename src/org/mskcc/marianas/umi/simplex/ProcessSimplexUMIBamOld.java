@@ -11,9 +11,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.mskcc.juber.util.CustomCaptureException;
+import org.mskcc.juber.util.Util;
 import org.mskcc.marianas.umi.duplex.DuplicateReadClusterCollection;
-import org.mskcc.marianas.util.CustomCaptureException;
-import org.mskcc.marianas.util.Util;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;

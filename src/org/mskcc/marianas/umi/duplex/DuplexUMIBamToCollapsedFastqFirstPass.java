@@ -7,15 +7,12 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.List;
 
 import org.mskcc.marianas.util.ClusterCollectionBuilder;
 import org.mskcc.marianas.util.StaticResources;
-import org.mskcc.marianas.util.Util;
 
 import htsjdk.samtools.reference.FastaSequenceIndex;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
-import htsjdk.samtools.util.Interval;
 
 /**
  * @author Juber Patel

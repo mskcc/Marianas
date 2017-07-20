@@ -13,8 +13,8 @@ import java.util.Map;
 import org.mskcc.juber.genotype.Genotype;
 import org.mskcc.juber.genotype.GenotypeEventType;
 import org.mskcc.juber.genotype.GenotypeID;
+import org.mskcc.juber.util.Util;
 import org.mskcc.marianas.util.StaticResources;
-import org.mskcc.marianas.util.Util;
 
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
@@ -22,7 +22,6 @@ import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.reference.FastaSequenceIndex;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
-import htsjdk.samtools.reference.ReferenceSequence;
 
 /**
  * @author Juber Patel

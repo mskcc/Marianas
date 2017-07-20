@@ -5,7 +5,7 @@ package org.mskcc.marianas.metrics.old;
 
 import java.io.IOException;
 
-import org.mskcc.marianas.util.CustomCaptureException;
+import org.mskcc.juber.util.CustomCaptureException;
 
 /**
  * @author Juber Patel

@@ -8,8 +8,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 
-import org.mskcc.marianas.metrics.CoveredRegions;
-import org.mskcc.marianas.util.CustomCaptureException;
+import org.mskcc.juber.util.CustomCaptureException;
 
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordIterator;

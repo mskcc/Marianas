@@ -12,7 +12,7 @@ import java.io.OutputStreamWriter;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
-import org.mskcc.marianas.util.Util;
+import org.mskcc.juber.util.Util;
 
 /**
  * 

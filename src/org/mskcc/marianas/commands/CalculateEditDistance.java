@@ -6,7 +6,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.mskcc.marianas.util.Util;
+import org.mskcc.juber.util.Util;
 
 /**
  * 
@@ -24,7 +24,7 @@ public class CalculateEditDistance
 		List<String> names = new ArrayList<String>();
 
 		BufferedReader reader = new BufferedReader(
-				new FileReader("/Users/patelj1/software/InnovationMetaPipeline/impact-pipeline-resources/barcodeKey96.txt"));
+				new FileReader("/Users/patelj1/software/InnovationMetaPipeline/impact-pipeline-resources/barcodeKey96-1.txt"));
 		System.out.println("Barcode1\tName1\tBarcode2\tName2\tDistance");
 
 		String line = null;
@@ -37,7 +37,7 @@ public class CalculateEditDistance
 			for (int i = 0; i < seqs.size(); i++)
 			{
 				int distance = Util.distance(seqs.get(i), parts[0]);
-				if (distance < 3)
+				if (distance < 5)
 				{
 					System.out.println(
 							parts[0] + "\t" + parts[1] + "\t" + seqs.get(i)

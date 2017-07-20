@@ -5,15 +5,11 @@ package org.mskcc.marianas.commands;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeMap;
 
 import org.mskcc.juber.alignment.Fragment;
 import org.mskcc.juber.util.JuberUtilException;
-import org.mskcc.marianas.util.Constants;
 
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordIterator;

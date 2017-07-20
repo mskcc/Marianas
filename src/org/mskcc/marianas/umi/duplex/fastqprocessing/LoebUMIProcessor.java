@@ -3,7 +3,7 @@
  */
 package org.mskcc.marianas.umi.duplex.fastqprocessing;
 
-import org.mskcc.marianas.util.Util;
+import org.mskcc.juber.util.Util;
 
 /**
  * @author Juber Patel
