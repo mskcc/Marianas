@@ -36,7 +36,6 @@ public class VariantCaller
 		String sampleName = args[2];
 
 		callSNVs(tumorPileupFile, normalPileupFile, sampleName);
-
 	}
 
 	private static void callSNVs(File tumorPileupFile, File normalPileupFile,
