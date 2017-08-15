@@ -90,39 +90,36 @@ public class VariantCaller
 
 					double af = tumorCount / tumorTotal;
 					mutationLine.append(df.format(af)).append("\t");
-					mutationLine.append(tumorCount).append("\t");
 
-					StringBuilder paren = new StringBuilder("(");
-					paren.append((int) tumorTotal).append(", ");
-					paren.append(df.format(
-							Integer.parseInt(tumorTokens[4]) / tumorTotal))
-							.append(", ");
-					paren.append(df.format(
-							Integer.parseInt(tumorTokens[5]) / tumorTotal))
-							.append(", ");
-					paren.append(df.format(
-							Integer.parseInt(tumorTokens[6]) / tumorTotal))
-							.append(", ");
-					paren.append(df.format(
-							Integer.parseInt(tumorTokens[7]) / tumorTotal))
-							.append(")");
-					mutationLine.append(paren.toString()).append("\t");
+					mutationLine.append((int) tumorTotal).append("\t");
+					mutationLine
+							.append(df.format(Integer.parseInt(tumorTokens[4])))
+							.append("\t");
+					mutationLine
+							.append(df.format(Integer.parseInt(tumorTokens[5])))
+							.append("\t");
+					mutationLine
+							.append(df.format(Integer.parseInt(tumorTokens[6])))
+							.append("\t");
+					mutationLine
+							.append(df.format(Integer.parseInt(tumorTokens[7])))
+							.append("\t");
 
-					paren = new StringBuilder("(");
-					paren.append((int) normalTotal).append(", ");
-					paren.append(df.format(
-							Integer.parseInt(normalTokens[4]) / normalTotal))
-							.append(", ");
-					paren.append(df.format(
-							Integer.parseInt(normalTokens[5]) / normalTotal))
-							.append(", ");
-					paren.append(df.format(
-							Integer.parseInt(normalTokens[6]) / normalTotal))
-							.append(", ");
-					paren.append(df.format(
-							Integer.parseInt(normalTokens[7]) / normalTotal))
-							.append(")");
-					mutationLine.append(paren.toString()).append("\t");
+					mutationLine.append((int) normalTotal).append("\t");
+					mutationLine
+							.append(df
+									.format(Integer.parseInt(normalTokens[4])))
+							.append("\t");
+					mutationLine
+							.append(df
+									.format(Integer.parseInt(normalTokens[5])))
+							.append("\t");
+					mutationLine
+							.append(df
+									.format(Integer.parseInt(normalTokens[6])))
+							.append("\t");
+					mutationLine.append(
+							df.format(Integer.parseInt(normalTokens[7])));
 
 					callsWriter.write(mutationLine.toString() + "\n");
 				}
