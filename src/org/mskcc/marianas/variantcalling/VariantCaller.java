@@ -86,6 +86,7 @@ public class VariantCaller
 					mutationLine.append(tumorTokens[1]).append("\t");
 					mutationLine.append(tumorTokens[2]).append("\t");
 					mutationLine.append(toBase(i)).append("\t");
+					mutationLine.append((int) tumorCount).append("\t");
 
 					double af = tumorCount / tumorTotal;
 					mutationLine.append(df.format(af)).append("\t");

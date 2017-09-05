@@ -33,7 +33,7 @@ public class StaticResources
 	{
 		return referenceFasta;
 	}
-	
+
 	public static FastaSequenceIndex getReferenceIndex()
 	{
 		return referenceFastaIndex;
@@ -50,7 +50,8 @@ public class StaticResources
 	}
 
 	public StaticResources(IndexedFastaSequenceFile referenceFasta,
-			FastaSequenceIndex refFastaIndex, File pileupFile, String positionOfInterest) throws IOException
+			FastaSequenceIndex refFastaIndex, File pileupFile,
+			String positionOfInterest) throws IOException
 	{
 		StaticResources.referenceFasta = referenceFasta;
 		StaticResources.referenceFastaIndex = refFastaIndex;
@@ -72,6 +73,14 @@ public class StaticResources
 	{
 		genotypes = new HashMap<String, Map<Integer, Byte[]>>();
 
+		// in case the pileup file does not exist or is not readable
+		if (!pileupFile.canRead())
+		{
+			System.out.println(pileupFile.getPath()
+					+ " is not readable. Will use reference as genotype for all positions.");
+			return;
+		}
+
 		BufferedReader reader = new BufferedReader(new FileReader(pileupFile));
 
 		String line = null;
@@ -83,6 +92,13 @@ public class StaticResources
 			words = line.split("\t");
 			int position = Integer.parseInt(words[1]);
 			int total = Integer.parseInt(words[3]);
+			
+			// minimum coverage required to read genotype for this position
+			if(total < 50)
+			{
+				continue;
+			}
+			
 			counts[0] = Integer.parseInt(words[4]);
 			counts[1] = Integer.parseInt(words[5]);
 			counts[2] = Integer.parseInt(words[6]);
@@ -110,7 +126,7 @@ public class StaticResources
 			{
 				selected.add((byte) 'T');
 			}
-			
+
 			// store the genotype in the map
 			Map<Integer, Byte[]> chrMap = genotypes.get(words[0]);
 			if (chrMap == null)
