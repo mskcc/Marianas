@@ -61,8 +61,6 @@ public class FindSpikedInAlleleFractions
 
 		writer.close();
 
-		int a = 5;
-
 	}
 
 	private static SpikeInInfo[] computeSpikeInInfo(Map<String, SiteInfo> sites,

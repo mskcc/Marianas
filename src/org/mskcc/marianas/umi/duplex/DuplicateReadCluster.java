@@ -451,16 +451,31 @@ public class DuplicateReadCluster
 		}
 
 		// build cluster consensus sequence.
-		// record a base that is not person's genotype iff it is present in both
-		// strands
+
 		for (int i = 0; i < psPositions.length; i++)
 		{
+			// if same consensii, no problem (including N (-1) ie no coverage)
 			if (psConsensus[i] == nsConsensus[i])
 			{
 				consensus[i] = psConsensus[i];
 			}
+			else if (psConsensus[i] == -1)
+			{
+				// if only one strand has coverage, accept that as consensus
+				// base
+				consensus[i] = nsConsensus[i];
+			}
+			else if (nsConsensus[i] == -1)
+			{
+				// if only one strand has coverage, accept that as consensus
+				// base
+				consensus[i] = psConsensus[i];
+			}
 			else
 			{
+				// in case the two strands have different consensus bases, fall
+				// back on genotype.
+
 				// find this person's genotype. If not available, use ref base
 				Byte[] genotype = null;
 				Map<Integer, Byte[]> chrMap = genotypes.get(contig);
@@ -473,9 +488,6 @@ public class DuplicateReadCluster
 				{
 					genotype = new Byte[] { psPositions[i].getRefBase() };
 				}
-
-				// if either strand consensus is part of person's genotype,
-				// accept it.
 
 				// TODO Assuming it is impossible to have 2 different bases as
 				// consensus where those bases are person's authentic genotype
@@ -498,8 +510,6 @@ public class DuplicateReadCluster
 				}
 
 			}
-
-			// what if one strand has alt and the other strand has N??
 		}
 
 		// build the consensus sequence
@@ -579,9 +589,9 @@ public class DuplicateReadCluster
 
 			trimmedLength--;
 		}
-		
+
 		// the consensus is all N's
-		if(trimmedLength == 0)
+		if (trimmedLength == 0)
 		{
 			return null;
 		}
@@ -590,6 +600,13 @@ public class DuplicateReadCluster
 
 		// remove deletion bases
 		String sequence = consensusSequenceBuilder.toString().replace("D", "");
+		
+		// if all bases were D.
+		//TODO see if there is a better way to write this method.
+		if(sequence.length() == 0)
+		{
+			return null;
+		}
 
 		// build consensus sequence qualities
 		// right now, returning constant quality of 50

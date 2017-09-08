@@ -13,6 +13,7 @@ import org.mskcc.marianas.umi.duplex.DuplicateReadClusterCollection;
 import org.mskcc.marianas.util.ClusterCollectionBuilder;
 import org.mskcc.marianas.util.StaticResources;
 
+import htsjdk.samtools.reference.FastaSequenceIndex;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 
 /**
@@ -38,8 +39,13 @@ public class ClusterDetailsAtPosition
 		int UMIMismatches = Integer.parseInt(args[3]);
 		int wobble = Integer.parseInt(args[4]);
 		// set the reference fasta
-		new StaticResources(new IndexedFastaSequenceFile(new File(args[5])),
-				pileupFile, position);
+		File refFastaFile = new File(args[5]);
+		File refFastaIndexFile = new File(args[5] + ".fai");
+		FastaSequenceIndex refFastaIndex = new FastaSequenceIndex(
+				refFastaIndexFile);
+		IndexedFastaSequenceFile refFasta = new IndexedFastaSequenceFile(
+				refFastaFile, refFastaIndex);
+		new StaticResources(refFasta, refFastaIndex, pileupFile, position);
 		File outputFile = new File(args[6]);
 
 		// no args after this point

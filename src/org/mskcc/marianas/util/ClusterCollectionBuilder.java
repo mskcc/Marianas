@@ -366,6 +366,7 @@ public class ClusterCollectionBuilder
 		// We will rearrange UMIString so that the lexicographically
 		// smaller UMI comes first
 		String UMI1 = UMIString.substring(0, UMIString.indexOf(UMISeparator));
+
 		String UMI2 = UMIString.substring(UMIString.indexOf(UMISeparator) + 1);
 
 		String UMIString1 = null;
