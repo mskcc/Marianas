@@ -81,7 +81,8 @@ public class VariantCaller
 				if (putativeSomatic(tumorTotal, tumorCount, normalTotal,
 						normalCount))
 				{
-					StringBuilder mutationLine = new StringBuilder();
+					StringBuilder mutationLine = new StringBuilder(
+							sampleName + "\t");
 					mutationLine.append(tumorTokens[0]).append("\t");
 					mutationLine.append(tumorTokens[1]).append("\t");
 					mutationLine.append(tumorTokens[2]).append("\t");
@@ -164,7 +165,16 @@ public class VariantCaller
 	private static boolean putativeSomatic(double tumorTotal, int tumorCount,
 			double normalTotal, int normalCount)
 	{
-		if (tumorCount > 0 && normalCount == 0)
+		if (normalCount == 0 && tumorCount > 0)
+		{
+			return true;
+		}
+		else if (normalCount < 3 && tumorCount >= 3)
+		{
+			return true;
+		}
+		else if (normalCount / normalTotal < 0.03
+				&& tumorCount / tumorTotal > 0.1)
 		{
 			return true;
 		}
