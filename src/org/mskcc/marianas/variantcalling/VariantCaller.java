@@ -10,6 +10,8 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.DecimalFormat;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * @author Juber Patel
@@ -23,6 +25,8 @@ import java.text.DecimalFormat;
 public class VariantCaller
 {
 
+	private static Map<String, String> hotspots = null;
+
 	/**
 	 * @param args
 	 * @throws IOException
@@ -34,6 +38,11 @@ public class VariantCaller
 		File tumorPileupFile = new File(args[0]);
 		File normalPileupFile = new File(args[1]);
 		String sampleName = args[2];
+		File hotspotsFile = new File(args[3]);
+
+		// no more args beyond this point
+
+		loadHotspots(hotspotsFile);
 
 		callSNVs(tumorPileupFile, normalPileupFile, sampleName);
 	}
@@ -48,6 +57,8 @@ public class VariantCaller
 
 		BufferedWriter callsWriter = new BufferedWriter(
 				new FileWriter(sampleName + "-calls.txt"));
+		callsWriter.write(
+				"Sample\tChr\tPosition\tRef\tAlt\tAltCount\tAltFraction\tTumorTotal\tTumorA\tTumorC\tTumorG\tTumorT\tNormalTotal\tNormalA\tNormalC\tNormalG\tNormalT\tGene\tMutation\tExistingRecord\n");
 
 		DecimalFormat df = new DecimalFormat("#.####");
 
@@ -81,12 +92,13 @@ public class VariantCaller
 				if (putativeSomatic(tumorTotal, tumorCount, normalTotal,
 						normalCount))
 				{
+					char altBase = toBase(i);
 					StringBuilder mutationLine = new StringBuilder(
 							sampleName + "\t");
 					mutationLine.append(tumorTokens[0]).append("\t");
 					mutationLine.append(tumorTokens[1]).append("\t");
 					mutationLine.append(tumorTokens[2]).append("\t");
-					mutationLine.append(toBase(i)).append("\t");
+					mutationLine.append(altBase).append("\t");
 					mutationLine.append((int) tumorCount).append("\t");
 
 					double af = tumorCount / tumorTotal;
@@ -119,8 +131,21 @@ public class VariantCaller
 							.append(df
 									.format(Integer.parseInt(normalTokens[6])))
 							.append("\t");
-					mutationLine.append(
-							df.format(Integer.parseInt(normalTokens[7])));
+					mutationLine
+							.append(df
+									.format(Integer.parseInt(normalTokens[7])))
+							.append("\t");
+
+					// add hotspots info
+					String hotspotsInfo = hotspots
+							.get(tumorTokens[0] + "\t" + tumorTokens[1] + "\t"
+									+ tumorTokens[2] + "\t" + altBase);
+					if (hotspotsInfo == null)
+					{
+						hotspotsInfo = "-\t-\t-";
+					}
+
+					mutationLine.append(hotspotsInfo);
 
 					callsWriter.write(mutationLine.toString() + "\n");
 				}
@@ -194,6 +219,47 @@ public class VariantCaller
 		}
 
 		return false;
+	}
+
+	/**
+	 * load the hotspots from the given file
+	 * 
+	 * @param hotspotsFile
+	 * @throws IOException
+	 */
+	private static void loadHotspots(File hotspotsFile) throws IOException
+	{
+		hotspots = new HashMap<String, String>();
+
+		// in case the pileup file does not exist or is not readable
+		if (!hotspotsFile.canRead())
+		{
+			System.err.println(hotspotsFile.getPath()
+					+ " is not readable. Will use reference as genotype for all positions.");
+			return;
+		}
+
+		BufferedReader reader = new BufferedReader(
+				new FileReader(hotspotsFile));
+		for (String line = reader.readLine(); line != null; line = reader
+				.readLine())
+		{
+			String[] tokens = line.split("\t");
+			String value = null;
+			if (tokens.length == 8)
+			{
+				value = tokens[0] + "\t" + tokens[6] + "\t" + tokens[7];
+			}
+			else
+			{
+				value = tokens[0] + "\t" + tokens[6] + "\t-";
+			}
+
+			hotspots.put(tokens[1] + "\t" + tokens[2] + "\t" + tokens[4] + "\t"
+					+ tokens[5], value);
+		}
+
+		reader.close();
 	}
 
 	/*

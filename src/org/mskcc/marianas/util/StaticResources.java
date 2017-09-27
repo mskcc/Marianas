@@ -76,7 +76,7 @@ public class StaticResources
 		// in case the pileup file does not exist or is not readable
 		if (!pileupFile.canRead())
 		{
-			System.out.println(pileupFile.getPath()
+			System.err.println(pileupFile.getPath()
 					+ " is not readable. Will use reference as genotype for all positions.");
 			return;
 		}

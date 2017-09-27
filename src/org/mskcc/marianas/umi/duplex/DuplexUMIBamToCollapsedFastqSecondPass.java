@@ -228,14 +228,13 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 		int other = 0;
 
 		// true-duplex filtering
-		/*
-		 * if(psSupport >= 3 && nsSupport >= 3)
-		 * {
-		 * return true;
-		 * }
-		 * 
-		 * return false;
-		 */
+
+		// if (psSupport >= 1 && nsSupport >= 1)
+		// {
+		// return true;
+		// }
+
+		// return false;
 
 		// regular filtering
 
