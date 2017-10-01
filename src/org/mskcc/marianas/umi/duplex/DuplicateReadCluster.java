@@ -20,7 +20,6 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.reference.FastaSequenceIndex;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 
 /**
@@ -33,8 +32,6 @@ public class DuplicateReadCluster
 {
 	private static final IndexedFastaSequenceFile referenceFasta = StaticResources
 			.getReference();
-	private static final FastaSequenceIndex referenceFastaIndex = StaticResources
-			.getReferenceIndex();
 
 	private static final Map<String, Map<Integer, Byte[]>> genotypes = StaticResources
 			.getGenotypes();
@@ -42,6 +39,10 @@ public class DuplicateReadCluster
 
 	private static final int maxReadLength = 150;
 	private static final int lastPileupIndex = maxReadLength - 1;
+
+	private static final byte minMappingQuality = 0;
+	private static final byte minBaseQuality = 0;
+	private static final int basesToTrim = 3;
 
 	private String contig;
 	private int startPosition;
@@ -173,6 +174,13 @@ public class DuplicateReadCluster
 		PositionPileup[] positions = null;
 		Map<GenotypeID, Genotype> specialGenotypes = null;
 
+		// TODO test fulcrum
+		if (record.getMappingQuality() < minMappingQuality
+				|| record.getMappingQuality() == 255)
+		{
+			return;
+		}
+
 		recordMatePosition(record);
 
 		if (positiveStrand)
@@ -189,6 +197,8 @@ public class DuplicateReadCluster
 		}
 
 		readBases = record.getReadBases();
+		baseQualities = record.getBaseQualities();
+
 		// tracks the current position in the read
 		readIndex = 0;
 		// points to the current position in the pileup
@@ -210,7 +220,12 @@ public class DuplicateReadCluster
 				{
 					if (pileupIndex >= 0 && pileupIndex <= lastPileupIndex)
 					{
-						positions[pileupIndex].addBase(readBases[readIndex]);
+						// TODO test fulcrum
+						if (baseQualities[readIndex] >= minBaseQuality)
+						{
+							positions[pileupIndex]
+									.addBase(readBases[readIndex]);
+						}
 
 						// if running in debug mode and at the right position
 						if (contigOfInterest != null
@@ -424,6 +439,12 @@ public class DuplicateReadCluster
 	 * @return
 	 * @throws IOException
 	 */
+	/**
+	 * @param writer
+	 * @param positiveStrand
+	 * @return
+	 * @throws IOException
+	 */
 	public String consensusSequenceInfo(BufferedWriter writer,
 			boolean positiveStrand) throws IOException
 	{
@@ -442,6 +463,12 @@ public class DuplicateReadCluster
 		System.arraycopy(psConsensus, 0, consensus, 0, psConsensus.length);
 		consensusSequenceBuilder.setLength(0);
 
+		if (contig.equals("2") && startPosition == 212578313
+				&& UMI.equals("GTT+TGG"))
+		{
+			int a = 5;
+		}
+
 		// compute per strand consensus sequence. Right now, just choosing the
 		// base with highest count at each position.
 		for (int i = 0; i < psPositions.length; i++)
@@ -459,18 +486,18 @@ public class DuplicateReadCluster
 			{
 				consensus[i] = psConsensus[i];
 			}
-			else if (psConsensus[i] == -1)
-			{
-				// if only one strand has coverage, accept that as consensus
-				// base
-				consensus[i] = nsConsensus[i];
-			}
-			else if (nsConsensus[i] == -1)
-			{
-				// if only one strand has coverage, accept that as consensus
-				// base
-				consensus[i] = psConsensus[i];
-			}
+			// else if (psConsensus[i] == -1)
+			// {
+			// // if only one strand has coverage, accept that as consensus
+			// // base
+			// consensus[i] = nsConsensus[i];
+			// }
+			// else if (nsConsensus[i] == -1)
+			// {
+			// // if only one strand has coverage, accept that as consensus
+			// // base
+			// consensus[i] = psConsensus[i];
+			// }
 			else
 			{
 				// in case the two strands have different consensus bases, fall
@@ -598,12 +625,22 @@ public class DuplicateReadCluster
 
 		consensusSequenceBuilder.setLength(trimmedLength);
 
+		// trim the leading and trailing n bases to avoid non-genomic bases
+		if (consensusSequenceBuilder.length() < 2 * basesToTrim)
+		{
+			return null;
+		}
+
+		consensusSequenceBuilder.delete(0, basesToTrim);
+		int l = consensusSequenceBuilder.length();
+		consensusSequenceBuilder.delete(l - basesToTrim, l);
+
 		// remove deletion bases
 		String sequence = consensusSequenceBuilder.toString().replace("D", "");
-		
+
 		// if all bases were D.
-		//TODO see if there is a better way to write this method.
-		if(sequence.length() == 0)
+		// TODO see if there is a better way to write this method.
+		if (sequence.length() == 0)
 		{
 			return null;
 		}

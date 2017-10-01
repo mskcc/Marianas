@@ -105,27 +105,44 @@ public class PositionPileup
 	 */
 	public byte getMaxCountBase()
 	{
-		if (baseCounts[0] == baseCounts[1] && baseCounts[0] == baseCounts[2]
-				&& baseCounts[0] == baseCounts[3] && baseCounts[0] == deletions)
+		int maxCount = -1;
+		for(int i=0; i<baseCounts.length; i++)
+		{
+			if(baseCounts[i]>maxCount)
+			{
+				maxCount = baseCounts[i];
+			}
+		}
+		
+		if(deletions > maxCount)
+		{
+			return 'D';
+		}
+		
+		if(baseCounts[4]==maxCount || deletions == maxCount)
+		{
+			return -1;
+		}
+		
+		int matches = 0;
+		int maxCountIndex = -1;
+		byte maxCountBase = -1;
+		for(int i=0; i<baseCounts.length; i++)
+		{
+			if(baseCounts[i]==maxCount)
+			{
+				matches++;
+				maxCountIndex = i;
+			}
+		}
+		
+		// there has to be a clear winner
+		if(matches > 1)
 		{
 			return -1;
 		}
 
-		int maxCountIndex = 0;
-		byte maxCountBase = -1;
-
-		maxCountIndex = baseCounts[1] > baseCounts[maxCountIndex] ? 1
-				: maxCountIndex;
-		maxCountIndex = baseCounts[2] > baseCounts[maxCountIndex] ? 2
-				: maxCountIndex;
-		maxCountIndex = baseCounts[3] > baseCounts[maxCountIndex] ? 3
-				: maxCountIndex;
-
-		if (deletions > baseCounts[maxCountIndex])
-		{
-			return 'D';
-		}
-		else if (maxCountIndex == 0)
+		if (maxCountIndex == 0)
 		{
 			maxCountBase = 'A';
 		}
