@@ -463,11 +463,11 @@ public class DuplicateReadCluster
 		System.arraycopy(psConsensus, 0, consensus, 0, psConsensus.length);
 		consensusSequenceBuilder.setLength(0);
 
-		if (contig.equals("2") && startPosition == 212578313
-				&& UMI.equals("GTT+TGG"))
-		{
-			int a = 5;
-		}
+		// if (contig.equals("2") && startPosition == 212578313
+		// && UMI.equals("GTT+TGG"))
+		// {
+		// int a = 5;
+		// }
 
 		// compute per strand consensus sequence. Right now, just choosing the
 		// base with highest count at each position.
@@ -500,6 +500,9 @@ public class DuplicateReadCluster
 			// }
 			else
 			{
+				// right now requiring that non-genotype base have support on
+				// both strands to be recorded.
+
 				// in case the two strands have different consensus bases, fall
 				// back on genotype.
 
