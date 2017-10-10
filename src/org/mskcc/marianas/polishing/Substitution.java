@@ -12,13 +12,9 @@ import java.util.Map;
  *         base substitutions
  *
  */
-public enum Substitution
+public class Substitution implements Comparable<Substitution>
 {
-	AtoC('A', 'C'), AtoG('A', 'G'), AtoT('A', 'T'), CtoA('C', 'A'), CtoG('C',
-			'G'), CtoT('C', 'T'), GtoA('G', 'A'), GtoC('G', 'C'), GtoT('G',
-					'T'), TtoA('T', 'A'), TtoC('T', 'C'), TtoG('T', 'G');
-
-	private static Map<Character, Map<Character, Substitution>> lookup = //
+	private static final Map<Character, Map<Character, Substitution>> lookup = //
 			new HashMap<Character, Map<Character, Substitution>>();
 
 	private char ref;
@@ -62,10 +58,31 @@ public enum Substitution
 	public static Substitution get(char ref, char alt)
 	{
 		Map<Character, Substitution> l2 = lookup.get(ref);
-		Substitution sub = l2.get(alt);
+		Substitution sub = null;
+
+		if (l2 != null)
+		{
+			sub = l2.get(alt);
+		}
+
+		if (sub == null || l2 == null)
+		{
+			sub = new Substitution(ref, alt);
+		}
 
 		return sub;
 
+	}
+
+	@Override
+	public int compareTo(Substitution o)
+	{
+		if (ref != o.ref)
+		{
+			return ref - o.ref;
+		}
+
+		return alt - o.alt;
 	}
 
 }
