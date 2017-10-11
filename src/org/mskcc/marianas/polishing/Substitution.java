@@ -85,4 +85,9 @@ public class Substitution implements Comparable<Substitution>
 		return alt - o.alt;
 	}
 
+	public String toString()
+	{
+		return ref + "to" + alt;
+	}
+
 }

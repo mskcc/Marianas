@@ -46,6 +46,8 @@ public class NoiseModelBuilder
 		}
 
 		// calculate parameters and write them out
+		
+		int a = 5;
 
 	}
 
