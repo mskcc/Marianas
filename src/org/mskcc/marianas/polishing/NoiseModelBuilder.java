@@ -46,7 +46,7 @@ public class NoiseModelBuilder
 		}
 
 		// calculate parameters and write them out
-		
+
 		int a = 5;
 
 	}
@@ -61,6 +61,13 @@ public class NoiseModelBuilder
 				.readLine())
 		{
 			words = line.split("\t");
+
+			// apply coverage threshold
+			int coverage = Integer.parseInt(words[3]);
+			if (coverage < minCoverage)
+			{
+				continue;
+			}
 
 			Map<Integer, PositionNoiseModels> chrModels = noiseModels
 					.get(words[0]);
@@ -87,13 +94,6 @@ public class NoiseModelBuilder
 			for (int i = 4; i < 8; i++)
 			{
 				if (i == indexToSkip)
-				{
-					continue;
-				}
-
-				// apply coverage threshold
-				int coverage = Integer.parseInt(words[3]);
-				if (coverage < minCoverage)
 				{
 					continue;
 				}
