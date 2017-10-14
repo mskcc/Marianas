@@ -13,6 +13,8 @@ import java.text.DecimalFormat;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.commons.math3.stat.Frequency;
+
 /**
  * @author Juber Patel
  * 
@@ -27,6 +29,8 @@ public class VariantCaller
 
 	private static Map<String, String> hotspots = null;
 
+	private static Map<NoiseModelID, NoiseModel> noiseModels = null;
+
 	/**
 	 * @param args
 	 * @throws IOException
@@ -39,11 +43,17 @@ public class VariantCaller
 		File normalPileupFile = new File(args[1]);
 		String sampleName = args[2];
 		File hotspotsFile = new File(args[3]);
+		File noiseFrequenciesFile = new File(args[4]);
 
 		// no more args beyond this point
 
+		System.out.println("Loading Mutation Hotspots");
 		loadHotspots(hotspotsFile);
 
+		System.out.println("Loading Noise Frequencies");
+		loadNoiseFrequencies(noiseFrequenciesFile);
+
+		System.out.println("Calling Variants");
 		callSNVs(tumorPileupFile, normalPileupFile, sampleName);
 	}
 
@@ -58,7 +68,8 @@ public class VariantCaller
 		BufferedWriter callsWriter = new BufferedWriter(
 				new FileWriter(sampleName + "-calls.txt"));
 		callsWriter.write(
-				"Sample\tChr\tPosition\tRef\tAlt\tAltCount\tAltFraction\tTumorTotal\tTumorA\tTumorC\tTumorG\tTumorT\tNormalTotal\tNormalA\tNormalC\tNormalG\tNormalT\tGene\tMutation\tExistingRecord\n");
+				"Sample\tChr\tPosition\tRef\tAlt\tAltCount\tAltFraction\tTumorTotal\tTumorA\tTumorC\tTumorG\tTumorT"
+						+ "\tNormalTotal\tNormalA\tNormalC\tNormalG\tNormalT\tGene\tMutation\tExistingRecord\n");
 
 		DecimalFormat df = new DecimalFormat("#.####");
 
@@ -219,6 +230,52 @@ public class VariantCaller
 		}
 
 		return false;
+	}
+
+	/**
+	 * load noise frequencies from given file
+	 * 
+	 * @param noiseFrequenciesFile
+	 * @throws IOException
+	 */
+	private static void loadNoiseFrequencies(File noiseFrequenciesFile)
+			throws IOException
+	{
+		noiseModels = new HashMap<NoiseModelID, NoiseModel>();
+
+		// in case the pileup file does not exist or is not readable
+		if (!noiseFrequenciesFile.canRead())
+		{
+			System.err.println(noiseFrequenciesFile.getPath()
+					+ " is not readable. Variants will be called without polishing (noise profiling) !!");
+			return;
+		}
+
+		BufferedReader reader = new BufferedReader(
+				new FileReader(noiseFrequenciesFile));
+		for (String line = reader.readLine(); line != null; line = reader
+				.readLine())
+		{
+			String[] tokens = line.split("\t");
+			NoiseModelID id = new NoiseModelID(tokens[0],
+					Integer.parseInt(tokens[1]), tokens[3].charAt(0),
+					tokens[4].charAt(0));
+
+			Frequency frequencyTable = new Frequency();
+			for (int i = 6; i < tokens.length; i += 2)
+			{
+				double value = Double.parseDouble(tokens[i - 1]);
+				int freq = Integer.parseInt(tokens[i]);
+				// add value to the frequency table
+				frequencyTable.incrementValue(value, freq);
+			}
+
+			NoiseModel noiseModel = new NoiseModel(id, frequencyTable);
+
+			noiseModels.put(id, noiseModel);
+		}
+
+		reader.close();
 	}
 
 	/**

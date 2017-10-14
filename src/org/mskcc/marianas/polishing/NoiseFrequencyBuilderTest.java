@@ -9,7 +9,7 @@ import java.io.IOException;
  * @author Juber Patel
  *
  */
-public class NoiseModelBuilderTest
+public class NoiseFrequencyBuilderTest
 {
 
 	/**
@@ -20,7 +20,7 @@ public class NoiseModelBuilderTest
 	{
 		String pileupDirectory = "pileupFiles/polishing-test/";
 
-		NoiseModelBuilder.main(new String[] { pileupDirectory });
+		NoiseFrequencyBuilder.main(new String[] { pileupDirectory });
 	}
 
 }
