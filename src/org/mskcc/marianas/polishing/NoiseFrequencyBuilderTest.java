@@ -18,7 +18,7 @@ public class NoiseFrequencyBuilderTest
 	 */
 	public static void main(String[] args) throws IOException
 	{
-		String pileupDirectory = "pileupFiles/polishing-test/";
+		String pileupDirectory = "pileupFiles/post-collapsing/polishing-normals-fulcrum-1-1-mq20";
 
 		NoiseFrequencyBuilder.main(new String[] { pileupDirectory });
 	}

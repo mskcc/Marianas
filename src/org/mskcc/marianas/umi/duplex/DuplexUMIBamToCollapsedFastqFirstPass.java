@@ -51,11 +51,13 @@ public class DuplexUMIBamToCollapsedFastqFirstPass
 		long start = System.currentTimeMillis();
 
 		File firstPassFile = new File(outputFolder, "first-pass.txt");
+		File altAlleleFile = new File(outputFolder,
+				"first-pass-alt-alleles.txt");
 
 		System.out.println("Marianas Loeb UMI First Pass");
 		System.out.println("Processing " + bamFile.getName());
 
-		firstPass(bamFile, UMIMismatches, wobble, firstPassFile);
+		firstPass(bamFile, UMIMismatches, wobble, firstPassFile, altAlleleFile);
 
 		long end = System.currentTimeMillis();
 		System.out.println("Finished processing in " + ((end - start) / 1000)
@@ -63,11 +65,13 @@ public class DuplexUMIBamToCollapsedFastqFirstPass
 	}
 
 	private static void firstPass(File bamFile, int mismatches, int wobble,
-			File firstPassFile) throws Exception
+			File firstPassFile, File altAlleleFile) throws Exception
 	{
 
 		BufferedWriter firstPassWriter = new BufferedWriter(
 				new FileWriter(firstPassFile));
+		BufferedWriter altAlleleWriter = new BufferedWriter(
+				new FileWriter(altAlleleFile));
 
 		ClusterCollectionBuilder clusterBuilder = new ClusterCollectionBuilder(
 				bamFile, wobble, mismatches, true);
@@ -86,18 +90,20 @@ public class DuplexUMIBamToCollapsedFastqFirstPass
 			}
 
 			recordPositiveStrandClusterCollection(clusterCollection,
-					firstPassWriter);
+					firstPassWriter, altAlleleWriter);
 		}
 
 		clusterBuilder.close();
 		firstPassWriter.close();
+		altAlleleWriter.close();
 
 		clusterBuilder.printNumbers();
 	}
 
 	private static void recordPositiveStrandClusterCollection(
 			DuplicateReadClusterCollection clusterCollection,
-			BufferedWriter firstPassWriter) throws IOException
+			BufferedWriter firstPassWriter, BufferedWriter altAlleleWriter)
+			throws IOException
 	{
 		// TODO write all the needed information !!!
 
@@ -117,7 +123,7 @@ public class DuplexUMIBamToCollapsedFastqFirstPass
 			try
 			{
 				consensusSequenceInfo = cluster.consensusSequenceInfo(null,
-						true);
+						altAlleleWriter, true);
 			}
 			catch (Exception e)
 			{
@@ -138,6 +144,7 @@ public class DuplexUMIBamToCollapsedFastqFirstPass
 		}
 
 		firstPassWriter.flush();
+		altAlleleWriter.flush();
 	}
 
 	//////////////////////////

@@ -68,7 +68,7 @@ public class VariantCaller
 		BufferedWriter callsWriter = new BufferedWriter(
 				new FileWriter(sampleName + "-calls.txt"));
 		callsWriter.write(
-				"Sample\tChr\tPosition\tRef\tAlt\tAltCount\tAltFraction\tTumorTotal\tTumorA\tTumorC\tTumorG\tTumorT"
+				"Sample\tChr\tPosition\tRef\tAlt\tAltCount\tAltFraction\tPValue\tTumorTotal\tTumorA\tTumorC\tTumorG\tTumorT"
 						+ "\tNormalTotal\tNormalA\tNormalC\tNormalG\tNormalT\tGene\tMutation\tExistingRecord\n");
 
 		DecimalFormat df = new DecimalFormat("#.####");
@@ -113,7 +113,24 @@ public class VariantCaller
 					mutationLine.append((int) tumorCount).append("\t");
 
 					double af = tumorCount / tumorTotal;
+					NoiseModelID id = new NoiseModelID(tumorTokens[0],
+							Integer.parseInt(tumorTokens[1]),
+							tumorTokens[2].charAt(0), altBase);
+
+					String p = null;
+					NoiseModel noiseModel = noiseModels.get(id);
+					if (noiseModel == null
+							|| noiseModel.getNumObservations() < 10)
+					{
+						p = "-";
+					}
+					else
+					{
+						p = Double.toString(noiseModel.getPValueFor(af));
+					}
+
 					mutationLine.append(df.format(af)).append("\t");
+					mutationLine.append(p).append("\t");
 
 					mutationLine.append((int) tumorTotal).append("\t");
 					mutationLine
@@ -167,6 +184,11 @@ public class VariantCaller
 		tumorReader.close();
 		normalReader.close();
 
+	}
+
+	private static double calculatePValue(double af, NoiseModelID id)
+	{
+		return noiseModels.get(id).getPValueFor(af);
 	}
 
 	private static char toBase(int i)

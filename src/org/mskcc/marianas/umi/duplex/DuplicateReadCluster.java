@@ -440,13 +440,14 @@ public class DuplicateReadCluster
 	 * @throws IOException
 	 */
 	/**
-	 * @param writer
+	 * @param debugWriter
 	 * @param positiveStrand
 	 * @return
 	 * @throws IOException
 	 */
-	public String consensusSequenceInfo(BufferedWriter writer,
-			boolean positiveStrand) throws IOException
+	public String consensusSequenceInfo(BufferedWriter debugWriter,
+			BufferedWriter altAlleleWriter, boolean positiveStrand)
+			throws IOException
 	{
 		// TODO This method will undergo revision as we determine how exactly we
 		// want to build the consensus sequence. There are many parameters to
@@ -463,8 +464,8 @@ public class DuplicateReadCluster
 		System.arraycopy(psConsensus, 0, consensus, 0, psConsensus.length);
 		consensusSequenceBuilder.setLength(0);
 
-		// if (contig.equals("2") && startPosition == 212578313
-		// && UMI.equals("GTT+TGG"))
+		// if (contig.equals("2") && startPosition == 29917743
+		// && UMI.equals("ACC+GAA"))
 		// {
 		// int a = 5;
 		// }
@@ -481,6 +482,19 @@ public class DuplicateReadCluster
 
 		for (int i = 0; i < psPositions.length; i++)
 		{
+			// find this person's genotype. If not available, use ref base
+			Byte[] genotype = null;
+			Map<Integer, Byte[]> chrMap = genotypes.get(contig);
+			if (chrMap != null)
+			{
+				genotype = chrMap.get(startPosition + i);
+			}
+
+			if (genotype == null || genotype.length == 0)
+			{
+				genotype = new Byte[] { psPositions[i].getRefBase() };
+			}
+
 			// if same consensii, no problem (including N (-1) ie no coverage)
 			if (psConsensus[i] == nsConsensus[i])
 			{
@@ -506,19 +520,6 @@ public class DuplicateReadCluster
 				// in case the two strands have different consensus bases, fall
 				// back on genotype.
 
-				// find this person's genotype. If not available, use ref base
-				Byte[] genotype = null;
-				Map<Integer, Byte[]> chrMap = genotypes.get(contig);
-				if (chrMap != null)
-				{
-					genotype = chrMap.get(startPosition + i);
-				}
-
-				if (genotype == null || genotype.length == 0)
-				{
-					genotype = new Byte[] { psPositions[i].getRefBase() };
-				}
-
 				// TODO Assuming it is impossible to have 2 different bases as
 				// consensus where those bases are person's authentic genotype
 				int j;
@@ -539,6 +540,13 @@ public class DuplicateReadCluster
 					consensus[i] = genotype[0];
 				}
 
+			}
+
+			// you have the consensus here. If it is non-genotype, write the alt
+			// allele info
+			if (isAlt(consensus[i], genotype))
+			{
+				writeAltAlleleInfo(i, genotype, altAlleleWriter);
 			}
 		}
 
@@ -576,7 +584,7 @@ public class DuplicateReadCluster
 						.append(nsConsensusBase).append("\t")
 						.append(nsReadCount).append("\t").append(consensusBase)
 						.append("\n");
-				writer.write(line.toString());
+				debugWriter.write(line.toString());
 			}
 
 			return null;
@@ -674,6 +682,49 @@ public class DuplicateReadCluster
 				.append("\t").append(sequence).append("\t").append(qualities);
 
 		return info.toString();
+	}
+
+	private void writeAltAlleleInfo(int i, Byte[] genotype,
+			BufferedWriter altAlleleWriter) throws IOException
+	{
+		// chr, start, UMI, altposition, genotype, consensus, pscount,
+		// altpscount, nscount,
+		// altnscount
+		altAlleleWriter.write(contig + "\t");
+		altAlleleWriter.write(startPosition + "\t");
+		altAlleleWriter.write(UMI + "\t");
+		altAlleleWriter.write((startPosition + i) + "\t");
+		altAlleleWriter.write((i+1) + "\t");
+		for (int k = 0; k < genotype.length; k++)
+		{
+			altAlleleWriter.write((char) genotype[k].byteValue());
+		}
+
+		altAlleleWriter.write("\t");
+		altAlleleWriter.write((char) consensus[i] + "\t");
+		altAlleleWriter.write(psPositions[i].getCoverage() + "\t");
+		altAlleleWriter.write(psPositions[i].getCount(consensus[i]) + "\t");
+		altAlleleWriter.write(nsPositions[i].getCoverage() + "\t");
+		altAlleleWriter.write(nsPositions[i].getCount(consensus[i]) + "\n");
+
+	}
+
+	private boolean isAlt(byte allele, Byte[] genotype)
+	{
+		if (allele == -1)
+		{
+			return false;
+		}
+
+		for (int i = 0; i < genotype.length; i++)
+		{
+			if (genotype[i].byteValue() == allele)
+			{
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	private String getMatePosition()
