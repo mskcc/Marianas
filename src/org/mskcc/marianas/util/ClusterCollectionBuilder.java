@@ -296,14 +296,11 @@ public class ClusterCollectionBuilder
 
 			totalUMIPairs++;
 
-			// only process read pairs that are concordant ie have proper
-			// orientation
-			// int concordance = isGoodAlignment(record);
-
 			// TODO think what mapping quality conditions to impose on read and
 			// mate
 			// TODO think what other conditions could invalidate a fragment
 
+			// silencing this part to allow detection of SVs
 			// discordant, both reads map on the same strand OR
 			// read maps at multiple places
 			if (record.getReadNegativeStrandFlag() == record

@@ -464,8 +464,8 @@ public class DuplicateReadCluster
 		System.arraycopy(psConsensus, 0, consensus, 0, psConsensus.length);
 		consensusSequenceBuilder.setLength(0);
 
-		// if (contig.equals("2") && startPosition == 29917743
-		// && UMI.equals("ACC+GAA"))
+		// if (contig.equals("2") && startPosition == 42544021
+		// && UMI.equals("CTC+CTT"))
 		// {
 		// int a = 5;
 		// }
@@ -544,7 +544,7 @@ public class DuplicateReadCluster
 
 			// you have the consensus here. If it is non-genotype, write the alt
 			// allele info
-			if (isAlt(consensus[i], genotype))
+			if (isAlt(consensus[i], i, genotype))
 			{
 				writeAltAlleleInfo(i, genotype, altAlleleWriter);
 			}
@@ -694,7 +694,7 @@ public class DuplicateReadCluster
 		altAlleleWriter.write(startPosition + "\t");
 		altAlleleWriter.write(UMI + "\t");
 		altAlleleWriter.write((startPosition + i) + "\t");
-		altAlleleWriter.write((i+1) + "\t");
+		altAlleleWriter.write((i + 1) + "\t");
 		for (int k = 0; k < genotype.length; k++)
 		{
 			altAlleleWriter.write((char) genotype[k].byteValue());
@@ -709,9 +709,9 @@ public class DuplicateReadCluster
 
 	}
 
-	private boolean isAlt(byte allele, Byte[] genotype)
+	private boolean isAlt(byte allele, int index, Byte[] genotype)
 	{
-		if (allele == -1)
+		if (allele == -1 || (allele == 'D' && index >= 115))
 		{
 			return false;
 		}

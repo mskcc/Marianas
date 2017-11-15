@@ -54,12 +54,15 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 
 		File firstPassFile = new File(outputFolder,
 				"first-pass.mate-position-sorted.txt");
+		File altAlleleFile = new File(outputFolder,
+				"second-pass-alt-alleles.txt");
 
 		System.out.println("Marianas Loeb UMI Second Pass");
 		System.out.println("Processing " + firstPassFile.getAbsolutePath()
 				+ " to produce fastqs");
 
-		secondPass(bamFile, UMIMismatches, wobble, outputFolder, firstPassFile);
+		secondPass(bamFile, UMIMismatches, wobble, outputFolder, firstPassFile,
+				altAlleleFile);
 
 		long end = System.currentTimeMillis();
 		System.out.println("Finished processing in " + ((end - start) / 1000)
@@ -67,16 +70,18 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 	}
 
 	private static void secondPass(File bamFile, int mismatches, int wobble,
-			File outputFolder, File firstPassFile) throws Exception
+			File outputFolder, File firstPassFile, File altAlleleFile)
+			throws Exception
 	{
 		BufferedReader firstPassReader = new BufferedReader(
 				new FileReader(firstPassFile));
 
 		BufferedWriter fastq1 = new BufferedWriter(
 				new FileWriter(new File(outputFolder, "collapsed_R1_.fastq")));
-
 		BufferedWriter fastq2 = new BufferedWriter(
 				new FileWriter(new File(outputFolder, "collapsed_R2_.fastq")));
+		BufferedWriter altAlleleWriter = new BufferedWriter(
+				new FileWriter(altAlleleFile));
 
 		ClusterCollectionBuilder clusterBuilder = new ClusterCollectionBuilder(
 				bamFile, wobble, mismatches, false);
@@ -161,7 +166,8 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 						try
 						{
 							consensusSequenceInfo = clusters[i]
-									.consensusSequenceInfo(null, false);
+									.consensusSequenceInfo(null,
+											altAlleleWriter, false);
 						}
 						catch (Exception e)
 						{
@@ -201,6 +207,7 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 		firstPassReader.close();
 		fastq1.close();
 		fastq2.close();
+		altAlleleWriter.close();
 
 		clusterBuilder.printNumbers();
 
