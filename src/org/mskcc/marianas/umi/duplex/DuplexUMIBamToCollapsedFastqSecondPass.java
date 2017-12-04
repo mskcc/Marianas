@@ -57,7 +57,7 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 		File altAlleleFile = new File(outputFolder,
 				"second-pass-alt-alleles.txt");
 
-		System.out.println("Marianas Loeb UMI Second Pass");
+		System.out.println("Marianas Loop UMI Second Pass");
 		System.out.println("Processing " + firstPassFile.getAbsolutePath()
 				+ " to produce fastqs");
 

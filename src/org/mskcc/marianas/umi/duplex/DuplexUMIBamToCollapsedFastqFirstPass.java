@@ -54,7 +54,7 @@ public class DuplexUMIBamToCollapsedFastqFirstPass
 		File altAlleleFile = new File(outputFolder,
 				"first-pass-alt-alleles.txt");
 
-		System.out.println("Marianas Loeb UMI First Pass");
+		System.out.println("Marianas Loop UMI First Pass");
 		System.out.println("Processing " + bamFile.getName());
 
 		firstPass(bamFile, UMIMismatches, wobble, firstPassFile, altAlleleFile);

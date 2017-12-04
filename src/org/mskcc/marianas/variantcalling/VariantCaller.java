@@ -87,13 +87,13 @@ public class VariantCaller
 
 			// tokens: 0-chr, 1-position, 2-ref, 3-total, 4-a, 5-c, 6-g, 7-t
 
-			if (noCoverage(tumorTokens, normalTokens))
+			double tumorTotal = Double.parseDouble(tumorTokens[3]);
+			double normalTotal = Double.parseDouble(normalTokens[3]);
+
+			if (noCoverage(tumorTotal, normalTotal))
 			{
 				continue;
 			}
-
-			double tumorTotal = Double.parseDouble(tumorTokens[3]);
-			double normalTotal = Double.parseDouble(normalTokens[3]);
 
 			for (int i = 4; i <= 7; i++)
 			{
@@ -186,11 +186,6 @@ public class VariantCaller
 
 	}
 
-	private static double calculatePValue(double af, NoiseModelID id)
-	{
-		return noiseModels.get(id).getPValueFor(af);
-	}
-
 	private static char toBase(int i)
 	{
 		switch (i)
@@ -223,14 +218,15 @@ public class VariantCaller
 	private static boolean putativeSomatic(double tumorTotal, int tumorCount,
 			double normalTotal, int normalCount)
 	{
+		// TODO think about a nice way to decide putative somatic call
 		if (normalCount == 0 && tumorCount > 0)
 		{
 			return true;
 		}
-		else if (normalCount < 3 && tumorCount >= 3)
-		{
-			return true;
-		}
+		// else if (normalCount < 3 && tumorCount >= 3)
+		// {
+		// return true;
+		// }
 		else if (normalCount / normalTotal < 0.03
 				&& tumorCount / tumorTotal > 0.1)
 		{
@@ -240,13 +236,11 @@ public class VariantCaller
 		return false;
 	}
 
-	private static boolean noCoverage(String[] tumorTokens,
-			String[] normalTokens)
+	private static boolean noCoverage(double tumorTotal, double normalTotal)
 	{
-		int coverageThreshold = 5;
+		int coverageThreshold = 50;
 
-		if (Integer.parseInt(tumorTokens[3]) < coverageThreshold
-				|| Integer.parseInt(normalTokens[3]) < coverageThreshold)
+		if (tumorTotal < coverageThreshold || normalTotal < coverageThreshold)
 		{
 			return true;
 		}
