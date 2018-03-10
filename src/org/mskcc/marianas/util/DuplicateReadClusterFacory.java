@@ -15,6 +15,12 @@ import org.mskcc.marianas.umi.duplex.DuplicateReadCluster;
 public class DuplicateReadClusterFacory
 		extends BasePooledObjectFactory<DuplicateReadCluster>
 {
+	private int minConsensusPercent;
+
+	public DuplicateReadClusterFacory(int minConsensusPercent)
+	{
+		this.minConsensusPercent = minConsensusPercent;
+	}
 
 	/*
 	 * (non-Javadoc)
@@ -24,7 +30,7 @@ public class DuplicateReadClusterFacory
 	@Override
 	public DuplicateReadCluster create() throws Exception
 	{
-		return new DuplicateReadCluster();
+		return new DuplicateReadCluster(minConsensusPercent);
 	}
 
 	/*

@@ -44,6 +44,8 @@ public class DuplicateReadCluster
 	private static final byte minBaseQuality = 0;
 	private static final int basesToTrim = 3;
 
+	private int minConsensusPercent;
+
 	private String contig;
 	private int startPosition;
 	private String UMI;
@@ -78,8 +80,9 @@ public class DuplicateReadCluster
 
 	private Map<String, Integer> matePositions;
 
-	public DuplicateReadCluster()
+	public DuplicateReadCluster(int minConsensusPercent)
 	{
+		this.minConsensusPercent = minConsensusPercent;
 		this.psPositions = new PositionPileup[maxReadLength];
 		this.nsPositions = new PositionPileup[maxReadLength];
 
@@ -464,12 +467,6 @@ public class DuplicateReadCluster
 		System.arraycopy(psConsensus, 0, consensus, 0, psConsensus.length);
 		consensusSequenceBuilder.setLength(0);
 
-		// if (contig.equals("2") && startPosition == 42544021
-		// && UMI.equals("CTC+CTT"))
-		// {
-		// int a = 5;
-		// }
-
 		// compute per strand consensus sequence. Right now, just choosing the
 		// base with highest count at each position.
 		for (int i = 0; i < psPositions.length; i++)
@@ -494,6 +491,9 @@ public class DuplicateReadCluster
 			{
 				genotype = new Byte[] { psPositions[i].getRefBase() };
 			}
+
+			finalizeStrandConsensus(psConsensus, psPositions, i, genotype);
+			finalizeStrandConsensus(nsConsensus, nsPositions, i, genotype);
 
 			// if same consensii, no problem (including N (-1) ie no coverage)
 			if (psConsensus[i] == nsConsensus[i])
@@ -682,6 +682,32 @@ public class DuplicateReadCluster
 				.append("\t").append(sequence).append("\t").append(qualities);
 
 		return info.toString();
+	}
+
+	/**
+	 * for alt, check if non-consensus count is below threshold
+	 * 
+	 * @param i
+	 * @param genotype
+	 */
+	private void finalizeStrandConsensus(byte[] consensus,
+			PositionPileup[] pileup, int index, Byte[] genotype)
+	{
+		if (!isAlt(consensus[index], index, genotype))
+		{
+			return;
+		}
+
+		int coverage = pileup[index].getCoverage();
+		double consensusPercent = (pileup[index].getCount(consensus[index])
+				* 100.0d) / coverage;
+
+		if (consensusPercent + 0.01 < minConsensusPercent)
+		{
+			// fall back on genotype
+			consensus[index] = genotype[0];
+		}
+
 	}
 
 	private void writeAltAlleleInfo(int i, Byte[] genotype,

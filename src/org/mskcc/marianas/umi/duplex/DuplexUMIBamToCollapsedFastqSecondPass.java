@@ -38,15 +38,16 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 		File pileupFile = new File(args[1]);
 		int UMIMismatches = Integer.parseInt(args[2]);
 		int wobble = Integer.parseInt(args[3]);
+		int minConsensusPercent = Integer.parseInt(args[4]);
 		// set the reference fasta
-		File refFastaFile = new File(args[4]);
-		File refFastaIndexFile = new File(args[4] + ".fai");
+		File refFastaFile = new File(args[5]);
+		File refFastaIndexFile = new File(args[5] + ".fai");
 		FastaSequenceIndex refFastaIndex = new FastaSequenceIndex(
 				refFastaIndexFile);
 		IndexedFastaSequenceFile refFasta = new IndexedFastaSequenceFile(
 				refFastaFile, refFastaIndex);
 		new StaticResources(refFasta, refFastaIndex, pileupFile, null);
-		File outputFolder = new File(args[5]);
+		File outputFolder = new File(args[6]);
 
 		// no args after this point
 
@@ -61,8 +62,8 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 		System.out.println("Processing " + firstPassFile.getAbsolutePath()
 				+ " to produce fastqs");
 
-		secondPass(bamFile, UMIMismatches, wobble, outputFolder, firstPassFile,
-				altAlleleFile);
+		secondPass(bamFile, UMIMismatches, wobble, minConsensusPercent,
+				outputFolder, firstPassFile, altAlleleFile);
 
 		long end = System.currentTimeMillis();
 		System.out.println("Finished processing in " + ((end - start) / 1000)
@@ -70,8 +71,8 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 	}
 
 	private static void secondPass(File bamFile, int mismatches, int wobble,
-			File outputFolder, File firstPassFile, File altAlleleFile)
-			throws Exception
+			int minConsensusPercent, File outputFolder, File firstPassFile,
+			File altAlleleFile) throws Exception
 	{
 		BufferedReader firstPassReader = new BufferedReader(
 				new FileReader(firstPassFile));
@@ -84,7 +85,7 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 				new FileWriter(altAlleleFile));
 
 		ClusterCollectionBuilder clusterBuilder = new ClusterCollectionBuilder(
-				bamFile, wobble, mismatches, false);
+				bamFile, wobble, mismatches, minConsensusPercent, false);
 
 		DuplicateReadClusterCollection clusterCollection = clusterBuilder
 				.next();
@@ -110,12 +111,12 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 
 			totalClusters++;
 
-			// apply filters
-			if (!goodToWrite(words))
-			{
-				badClusters++;
-				continue;
-			}
+			// not applying filters at this stage anymore
+			//if (!goodToWriteDuplex(words))
+			//{
+			//	badClusters++;
+			//	continue;
+			//}
 
 			// this is specifically being done for the the subset bams used
 			// in testing that may have only one read from pairs near the
@@ -145,6 +146,7 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 				{
 					break;
 				}
+				
 				comp = compareGenomicPositions(wantedContigIndex,
 						wantedStartPosition, clusterCollection.getContigIndex(),
 						clusterCollection.getStartPosition());
@@ -234,6 +236,29 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 		int nsSupport = Integer.parseInt(words[4]);
 		int other = 0;
 
+		if (psSupport > 0 && nsSupport > 0)
+		{
+			return true;
+		}
+
+		if (psSupport == 0)
+		{
+			other = nsSupport;
+		}
+
+		if (nsSupport == 0)
+		{
+			other = psSupport;
+		}
+
+		return other >= 3;
+	}
+
+	private static boolean goodToWriteDuplex(String[] words)
+	{
+		int psSupport = Integer.parseInt(words[3]);
+		int nsSupport = Integer.parseInt(words[4]);
+
 		// true-duplex filtering
 
 		if (psSupport >= 1 && nsSupport >= 1)
@@ -242,26 +267,6 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 		}
 
 		return false;
-
-		// regular filtering
-
-		// if (psSupport > 0 && nsSupport > 0)
-		// {
-		// return true;
-		// }
-		//
-		// if (psSupport == 0)
-		// {
-		// other = nsSupport;
-		// }
-		//
-		// if (nsSupport == 0)
-		// {
-		// other = psSupport;
-		// }
-		//
-		// return other >= 3;
-
 	}
 
 	/**

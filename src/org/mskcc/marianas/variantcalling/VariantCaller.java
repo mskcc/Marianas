@@ -232,6 +232,10 @@ public class VariantCaller
 		{
 			return true;
 		}
+		else if ((tumorCount / tumorTotal) > 3 * (normalCount / normalTotal))
+		{
+			return true;
+		}
 
 		return false;
 	}

@@ -41,6 +41,7 @@ public class ClusterCollectionBuilder
 {
 	private int wobble;
 	private int mismatches;
+	private int minConsensusPercent;
 	private SlidingWindowBamReader reader;
 	private DuplicateReadClusterCollection[] currentClusterWindow;
 	private List<SAMRecord>[] currentRecordWindow;
@@ -70,26 +71,30 @@ public class ClusterCollectionBuilder
 	 * @param bamFile
 	 * @param wobble
 	 * @param mismatches
+	 * @param minConsensusPercent
 	 * @param positiveStrand
 	 *            the read strand (as opposed to fragment strand). We process
 	 *            the reads mapping mapping 5' -> 3' on one strand at a time
 	 */
 	public ClusterCollectionBuilder(File bamFile, int wobble, int mismatches,
-			boolean positiveStrand)
+			int minConsensusPercent, boolean positiveStrand)
 	{
 		this.wobble = wobble;
 		this.mismatches = mismatches;
+		this.minConsensusPercent = minConsensusPercent;
 		this.positiveStrand = positiveStrand;
 		this.debugMode = StaticResources.getPositionOfInterest() != null;
 		this.reader = new SlidingWindowBamReader(bamFile, wobble * 2 + 1);
 		this.currentClusterWindow = new DuplicateReadClusterCollection[wobble
 				* 2 + 1];
-		makeClusterPool();
+		// TODO uncomment this if you want to use object pooling. Not using
+		// right now.
+		// makeClusterPool();
 
 		for (int i = 0; i < currentClusterWindow.length; i++)
 		{
 			currentClusterWindow[i] = new DuplicateReadClusterCollection(
-					clusterPool);
+					clusterPool, minConsensusPercent);
 		}
 
 		// initial value to ensure that sliding starts promptly
@@ -113,7 +118,8 @@ public class ClusterCollectionBuilder
 
 		GenericObjectPoolConfig config = new GenericObjectPoolConfig();
 
-		PooledObjectFactory<DuplicateReadCluster> factory = new DuplicateReadClusterFacory();
+		PooledObjectFactory<DuplicateReadCluster> factory = new DuplicateReadClusterFacory(
+				minConsensusPercent);
 		this.clusterPool = new GenericObjectPool<DuplicateReadCluster>(factory,
 				config);
 	}

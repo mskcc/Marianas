@@ -22,6 +22,7 @@ public class DuplicateReadClusterCollection
 	private String contig;
 	private int contigIndex;
 	private int startPosition;
+	private int minConsensusPercent;
 
 	/**
 	 * UMI -> cluster map
@@ -31,10 +32,11 @@ public class DuplicateReadClusterCollection
 	private ObjectPool<DuplicateReadCluster> clusterPool;
 
 	public DuplicateReadClusterCollection(
-			ObjectPool<DuplicateReadCluster> clusterPool)
+			ObjectPool<DuplicateReadCluster> clusterPool, int minConsensusPercent)
 	{
 		this.clusters = new HashMap<String, DuplicateReadCluster>();
 		this.clusterPool = clusterPool;
+		this.minConsensusPercent = minConsensusPercent;
 	}
 
 	public void prepareFor(String contig, int contigIndex, int startPosition)
@@ -71,7 +73,7 @@ public class DuplicateReadClusterCollection
 		{
 			// TODO decide if you want to use Apache Pool !!!
 			// cluster = clusterPool.borrowObject();
-			cluster = new DuplicateReadCluster();
+			cluster = new DuplicateReadCluster(minConsensusPercent);
 			cluster.prepareFor(contig, startPosition, UMI);
 			clusters.put(UMI, cluster);
 		}
