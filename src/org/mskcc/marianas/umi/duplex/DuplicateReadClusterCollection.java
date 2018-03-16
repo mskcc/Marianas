@@ -22,6 +22,8 @@ public class DuplicateReadClusterCollection
 	private String contig;
 	private int contigIndex;
 	private int startPosition;
+	private int minMappingQuality;
+	private int minBaseQuality;
 	private int minConsensusPercent;
 
 	/**
@@ -32,10 +34,13 @@ public class DuplicateReadClusterCollection
 	private ObjectPool<DuplicateReadCluster> clusterPool;
 
 	public DuplicateReadClusterCollection(
-			ObjectPool<DuplicateReadCluster> clusterPool, int minConsensusPercent)
+			ObjectPool<DuplicateReadCluster> clusterPool, int minMappingQuality,
+			int minBaseQuality, int minConsensusPercent)
 	{
 		this.clusters = new HashMap<String, DuplicateReadCluster>();
 		this.clusterPool = clusterPool;
+		this.minMappingQuality = minMappingQuality;
+		this.minBaseQuality = minBaseQuality;
 		this.minConsensusPercent = minConsensusPercent;
 	}
 
@@ -62,18 +67,19 @@ public class DuplicateReadClusterCollection
 	{
 		DuplicateReadCluster cluster = clusters.get(UMI);
 
-		//if (record.getReferenceName().equals("6")
-			//	&& record.getAlignmentStart() == 117725360
-				//&& UMI.equals("CTC+GCA"))
-		//{
-			//int a = 5;
-		//}
+		// if (record.getReferenceName().equals("6")
+		// && record.getAlignmentStart() == 117725360
+		// && UMI.equals("CTC+GCA"))
+		// {
+		// int a = 5;
+		// }
 
 		if (cluster == null)
 		{
 			// TODO decide if you want to use Apache Pool !!!
 			// cluster = clusterPool.borrowObject();
-			cluster = new DuplicateReadCluster(minConsensusPercent);
+			cluster = new DuplicateReadCluster(minMappingQuality,
+					minBaseQuality, minConsensusPercent);
 			cluster.prepareFor(contig, startPosition, UMI);
 			clusters.put(UMI, cluster);
 		}

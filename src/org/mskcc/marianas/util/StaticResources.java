@@ -8,9 +8,11 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 import htsjdk.samtools.reference.FastaSequenceIndex;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
@@ -86,19 +88,20 @@ public class StaticResources
 		String line = null;
 		String[] words = null;
 		int[] counts = new int[4];
-		List<Byte> selected = new ArrayList<Byte>();
+		// TODO: make this a map and sort by proportion??
+		Map<Double, Byte> selected = new TreeMap<Double, Byte>();
 		while ((line = reader.readLine()) != null)
 		{
 			words = line.split("\t");
 			int position = Integer.parseInt(words[1]);
 			int total = Integer.parseInt(words[3]);
-			
+
 			// minimum coverage required to read genotype for this position
-			if(total < 50)
+			if (total < 50)
 			{
 				continue;
 			}
-			
+
 			counts[0] = Integer.parseInt(words[4]);
 			counts[1] = Integer.parseInt(words[5]);
 			counts[2] = Integer.parseInt(words[6]);
@@ -107,24 +110,37 @@ public class StaticResources
 			selected.clear();
 			double proportionThreshold = 0.15;
 
-			if ((counts[0] * 1.0) / total >= proportionThreshold)
+			for (int i = 0; i < 4; i++)
 			{
-				selected.add((byte) 'A');
+				double proportion = (counts[i] * 1.0) / total;
+				if (proportion >= proportionThreshold)
+				{
+					selected.put(proportion, (byte) 'A');
+				}
 			}
 
-			if ((counts[1] * 1.0) / total >= proportionThreshold)
+			double proportion = (counts[0] * 1.0) / total;
+			if (proportion >= proportionThreshold)
 			{
-				selected.add((byte) 'C');
+				selected.put(proportion, (byte) 'A');
 			}
 
-			if ((counts[2] * 1.0) / total >= proportionThreshold)
+			proportion = (counts[1] * 1.0) / total;
+			if (proportion >= proportionThreshold)
 			{
-				selected.add((byte) 'G');
+				selected.put(proportion, (byte) 'C');
 			}
 
-			if ((counts[3] * 1.0) / total >= proportionThreshold)
+			proportion = (counts[2] * 1.0) / total;
+			if (proportion >= proportionThreshold)
 			{
-				selected.add((byte) 'T');
+				selected.put(proportion, (byte) 'G');
+			}
+
+			proportion = (counts[3] * 1.0) / total;
+			if (proportion >= proportionThreshold)
+			{
+				selected.put(proportion, (byte) 'T');
 			}
 
 			// store the genotype in the map
@@ -134,8 +150,10 @@ public class StaticResources
 				chrMap = new HashMap<Integer, Byte[]>();
 				genotypes.put(words[0], chrMap);
 			}
-
-			chrMap.put(position, selected.toArray(new Byte[0]));
+			
+			List<Byte> list = new ArrayList<>(selected.values());
+			Collections.reverse(list);
+			chrMap.put(position, list.toArray(new Byte[0]));
 		}
 
 		reader.close();

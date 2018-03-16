@@ -112,11 +112,11 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 			totalClusters++;
 
 			// not applying filters at this stage anymore
-			//if (!goodToWriteDuplex(words))
-			//{
-			//	badClusters++;
-			//	continue;
-			//}
+			// if (!goodToWriteDuplex(words))
+			// {
+			// badClusters++;
+			// continue;
+			// }
 
 			// this is specifically being done for the the subset bams used
 			// in testing that may have only one read from pairs near the
@@ -146,7 +146,7 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 				{
 					break;
 				}
-				
+
 				comp = compareGenomicPositions(wantedContigIndex,
 						wantedStartPosition, clusterCollection.getContigIndex(),
 						clusterCollection.getStartPosition());
@@ -168,8 +168,8 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 						try
 						{
 							consensusSequenceInfo = clusters[i]
-									.consensusSequenceInfo(null,
-											altAlleleWriter, false);
+									.consensusSequenceInfo(altAlleleWriter,
+											false);
 						}
 						catch (Exception e)
 						{

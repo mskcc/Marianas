@@ -3,6 +3,8 @@
  */
 package org.mskcc.marianas.umi.duplex;
 
+import org.apache.commons.math3.util.FastMath;
+
 /**
  * @author Juber Patel
  * 
@@ -16,8 +18,8 @@ public class PositionPileup
 	// counts for A, C, G, T and N for this position
 	private int[] baseCounts;
 	private int[] baseQualities;
-	private int insertions;
 	private int deletions;
+	private int deletionQualities;
 
 	public PositionPileup()
 	{
@@ -38,31 +40,36 @@ public class PositionPileup
 
 		}
 
-		insertions = 0;
 		deletions = 0;
+		deletionQualities = 0;
 	}
 
-	public void addBase(byte base)
+	public void addBase(byte base, byte quality)
 	{
 		if (base == 'A' || base == 'a')
 		{
 			baseCounts[0]++;
+			baseQualities[0] += quality;
 		}
 		else if (base == 'C' || base == 'c')
 		{
 			baseCounts[1]++;
+			baseQualities[1] += quality;
 		}
 		else if (base == 'G' || base == 'g')
 		{
 			baseCounts[2]++;
+			baseQualities[2] += quality;
 		}
 		else if (base == 'T' || base == 't')
 		{
 			baseCounts[3]++;
+			baseQualities[3] += quality;
 		}
 		else
 		{
 			baseCounts[4]++;
+			baseQualities[4] += quality;
 		}
 	}
 
@@ -84,13 +91,37 @@ public class PositionPileup
 		{
 			return baseCounts[3];
 		}
-		else if (base == 'I')
-		{
-			return insertions;
-		}
 		else if (base == 'D')
 		{
 			return deletions;
+		}
+		else
+		{
+			return -1;
+		}
+	}
+
+	public int getQualitySum(byte base)
+	{
+		if (base == 'A' || base == 'a')
+		{
+			return baseQualities[0];
+		}
+		else if (base == 'C' || base == 'c')
+		{
+			return baseQualities[1];
+		}
+		else if (base == 'G' || base == 'g')
+		{
+			return baseQualities[2];
+		}
+		else if (base == 'T' || base == 't')
+		{
+			return baseQualities[3];
+		}
+		else if (base == 'D')
+		{
+			return deletionQualities;
 		}
 		else
 		{
@@ -106,38 +137,38 @@ public class PositionPileup
 	public byte getMaxCountBase()
 	{
 		int maxCount = -1;
-		for(int i=0; i<baseCounts.length; i++)
+		for (int i = 0; i < baseCounts.length; i++)
 		{
-			if(baseCounts[i]>maxCount)
+			if (baseCounts[i] > maxCount)
 			{
 				maxCount = baseCounts[i];
 			}
 		}
-		
-		if(deletions > maxCount)
+
+		if (deletions > maxCount)
 		{
 			return 'D';
 		}
-		
-		if(baseCounts[4]==maxCount || deletions == maxCount)
+
+		if (baseCounts[4] == maxCount || deletions == maxCount)
 		{
 			return -1;
 		}
-		
+
 		int matches = 0;
 		int maxCountIndex = -1;
 		byte maxCountBase = -1;
-		for(int i=0; i<baseCounts.length; i++)
+		for (int i = 0; i < baseCounts.length; i++)
 		{
-			if(baseCounts[i]==maxCount)
+			if (baseCounts[i] == maxCount)
 			{
 				matches++;
 				maxCountIndex = i;
 			}
 		}
-		
+
 		// there has to be a clear winner
-		if(matches > 1)
+		if (matches > 1)
 		{
 			return -1;
 		}
@@ -169,30 +200,10 @@ public class PositionPileup
 				+ deletions;
 	}
 
-	public void addDeletion()
+	public void addDeletion(byte quality)
 	{
 		deletions++;
-	}
-
-	public void addInsertion()
-	{
-		insertions++;
-	}
-
-	public String toString()
-	{
-		StringBuilder builder = new StringBuilder();
-
-		builder.append((char) refBase).append('\t');
-		builder.append(getCoverage() + baseCounts[4]).append('\t');
-		builder.append(baseCounts[0]).append('\t');
-		builder.append(baseCounts[1]).append('\t');
-		builder.append(baseCounts[2]).append('\t');
-		builder.append(baseCounts[3]).append('\t');
-		builder.append(insertions).append('\t');
-		builder.append(deletions).append('\t');
-
-		return builder.toString();
+		deletionQualities += quality;
 	}
 
 	public void merge(PositionPileup other)
@@ -203,7 +214,6 @@ public class PositionPileup
 			baseQualities[i] += other.baseQualities[i];
 		}
 
-		insertions += other.insertions;
 		deletions += other.deletions;
 	}
 
@@ -215,5 +225,33 @@ public class PositionPileup
 	public int[] getBaseCounts()
 	{
 		return baseCounts;
+	}
+
+	/**
+	 * compute consensus base quality for this strand from base quality scores.
+	 * 
+	 * @param consensusBase
+	 * 
+	 * @return
+	 */
+	public int getConsensusQuality(byte consensusBase)
+	{
+		// take average, multiply by replication factor
+		int qualitySum = getQualitySum(consensusBase);
+		int nonBaseQualitySum = baseQualities[0] + baseQualities[1]
+				+ baseQualities[2] + baseQualities[3] + deletionQualities
+				- qualitySum;
+		qualitySum -= nonBaseQualitySum;
+		double qualityAverage = (qualitySum * 1.0) / getCoverage();
+
+		int counts = getCount(consensusBase);
+		int nonBaseCounts = baseCounts[0] + baseCounts[1] + baseCounts[2]
+				+ baseCounts[3] + deletions - counts;
+		counts -= nonBaseCounts;
+
+		double replicationFactor = FastMath.log(2, counts) + 1;
+		int quality = (int) (qualityAverage * replicationFactor);
+		return quality;
+
 	}
 }

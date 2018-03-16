@@ -25,15 +25,13 @@ public class SeparateBams
 {
 
 	/**
-	 * @param args path to the collapsed bam
+	 * @param args
+	 *            path to the collapsed bam
 	 * @throws IOException
 	 */
 	public static void main(String[] args) throws IOException
 	{
-		String collapsedBamPath = "../Waltz/bamFiles/collapsed/"
-				+ "MSK-L-017-cf-IGO-05500-DY-18_bc209_5500-DY-4_L000_mrg_cl_aln_srt_MD_IR_FX_BR.bam";
-
-		File collapsedBam = new File(collapsedBamPath);
+		File collapsedBam = new File(args[0]);
 		File simplexDuplexBam = new File(
 				collapsedBam.getName().replace(".bam", "-simplex-duplex.bam"));
 		File duplexBam = new File(

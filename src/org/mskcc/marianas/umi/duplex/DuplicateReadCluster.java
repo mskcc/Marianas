@@ -37,14 +37,19 @@ public class DuplicateReadCluster
 			.getGenotypes();
 	private static final String pos = StaticResources.getPositionOfInterest();
 
+	/**
+	 * possible base quality values conforming to Sanger and Illumina
+	 * sequencing. Not including a few highest and lowest values since those are
+	 * treated as special values by some downstream programs.
+	 */
+	private static final int[] baseQualityRange = new int[] { 5, 90 };
 	private static final int maxReadLength = 150;
 	private static final int lastPileupIndex = maxReadLength - 1;
-
-	private static final byte minMappingQuality = 0;
-	private static final byte minBaseQuality = 0;
 	private static final int basesToTrim = 3;
 
-	private int minConsensusPercent;
+	private final int minMappingQuality;
+	private final int minBaseQuality;
+	private final int minConsensusPercent;
 
 	private String contig;
 	private int startPosition;
@@ -67,11 +72,15 @@ public class DuplicateReadCluster
 	 */
 	private Map<GenotypeID, Genotype> psSpecialGenotypes;
 	private Map<GenotypeID, Genotype> nsSpecialGenotypes;
+	private Map<GenotypeID, int[]> psInsertionQualities;
+	private Map<GenotypeID, int[]> nsInsertionQualities;
 
 	private byte[] psConsensus;
 	private byte[] nsConsensus;
 	private byte[] consensus;
 	private StringBuilder consensusSequenceBuilder;
+	private StringBuilder consensusQualityBuilder;
+
 	private byte[] referenceBases;
 
 	private byte[] readBases;
@@ -80,8 +89,11 @@ public class DuplicateReadCluster
 
 	private Map<String, Integer> matePositions;
 
-	public DuplicateReadCluster(int minConsensusPercent)
+	public DuplicateReadCluster(int minMappingQuality, int minBaseQuality,
+			int minConsensusPercent)
 	{
+		this.minMappingQuality = minMappingQuality;
+		this.minBaseQuality = minBaseQuality;
 		this.minConsensusPercent = minConsensusPercent;
 		this.psPositions = new PositionPileup[maxReadLength];
 		this.nsPositions = new PositionPileup[maxReadLength];
@@ -98,9 +110,12 @@ public class DuplicateReadCluster
 		this.nsConsensus = new byte[maxReadLength];
 		this.consensus = new byte[maxReadLength];
 		this.consensusSequenceBuilder = new StringBuilder(maxReadLength + 50);
+		this.consensusQualityBuilder = new StringBuilder(maxReadLength + 50);
 
 		psSpecialGenotypes = new HashMap<GenotypeID, Genotype>();
 		nsSpecialGenotypes = new HashMap<GenotypeID, Genotype>();
+		psInsertionQualities = new HashMap<GenotypeID, int[]>();
+		nsInsertionQualities = new HashMap<GenotypeID, int[]>();
 
 		matePositions = new HashMap<String, Integer>();
 
@@ -157,6 +172,8 @@ public class DuplicateReadCluster
 
 		psSpecialGenotypes.clear();
 		nsSpecialGenotypes.clear();
+		psInsertionQualities.clear();
+		nsInsertionQualities.clear();
 
 		matePositions.clear();
 	}
@@ -176,6 +193,7 @@ public class DuplicateReadCluster
 
 		PositionPileup[] positions = null;
 		Map<GenotypeID, Genotype> specialGenotypes = null;
+		Map<GenotypeID, int[]> insertionQualities = null;
 
 		// TODO test fulcrum
 		if (record.getMappingQuality() < minMappingQuality
@@ -191,12 +209,14 @@ public class DuplicateReadCluster
 			psReadCount++;
 			positions = psPositions;
 			specialGenotypes = psSpecialGenotypes;
+			insertionQualities = psInsertionQualities;
 		}
 		else
 		{
 			nsReadCount++;
 			positions = nsPositions;
 			specialGenotypes = nsSpecialGenotypes;
+			insertionQualities = nsInsertionQualities;
 		}
 
 		readBases = record.getReadBases();
@@ -226,8 +246,8 @@ public class DuplicateReadCluster
 						// TODO test fulcrum
 						if (baseQualities[readIndex] >= minBaseQuality)
 						{
-							positions[pileupIndex]
-									.addBase(readBases[readIndex]);
+							positions[pileupIndex].addBase(readBases[readIndex],
+									baseQualities[readIndex]);
 						}
 
 						// if running in debug mode and at the right position
@@ -258,8 +278,6 @@ public class DuplicateReadCluster
 				// CIGAR and quitting when it goes out of the region
 				if (pileupIndex >= 1 && pileupIndex <= lastPileupIndex + 1)
 				{
-					positions[pileupIndex].addInsertion();
-
 					// add insertion to special genotypes map
 					// make genotype id
 					int precedingGenomicPosition = startPosition
@@ -269,13 +287,12 @@ public class DuplicateReadCluster
 					alt[0] = ref[0];
 					System.arraycopy(readBases, readIndex, alt, 1,
 							operatorLength);
-					// copy(readBases, readIndex - 1,
-					// readIndex + operatorLength);
 					GenotypeID genotypeID = new GenotypeID(
 							GenotypeEventType.INSERTION, contig,
 							precedingGenomicPosition, ref, alt);
 					// add
-					addSpecialGenotype(specialGenotypes, genotypeID);
+					addSpecialGenotype(specialGenotypes, insertionQualities,
+							genotypeID, operatorLength);
 				}
 
 				// increment readIndex but not PileupIndex
@@ -283,37 +300,40 @@ public class DuplicateReadCluster
 			}
 			else if (operator.equals(CigarOperator.DELETION))
 			{
+				// assign deletion quality as average of preceding and
+				// following base qualities
+				byte quality = (byte) ((baseQualities[readIndex - 1]
+						+ baseQualities[readIndex]) / 2);
+
 				// add deletion to the special genotypes map iff it is a
 				// multi-base deletion
-				if (operatorLength > 1 && pileupIndex >= 1
-						&& pileupIndex <= lastPileupIndex + 1)
-				{
-					// make genotype id
-					int precedingGenomicPosition = startPosition
-							+ (pileupIndex - 1);
-					byte[] alt = new byte[] { referenceBases[pileupIndex - 1] };
-					byte[] ref = referenceFasta
-							.getSubsequenceAt(contig, precedingGenomicPosition,
-									precedingGenomicPosition + operatorLength)
-							.getBases();
-					// byte[] ref = Arrays.copyOfRange(referenceBases,
-					// pileupIndex - 1, pileupIndex + operatorLength);
+				// if (operatorLength > 1 && pileupIndex >= 1
+				// && pileupIndex <= lastPileupIndex + 1)
+				// {
+				// make genotype id
+				// int precedingGenomicPosition = startPosition
+				// + (pileupIndex - 1);
+				// byte[] alt = new byte[] { referenceBases[pileupIndex - 1] };
+				// byte[] ref = referenceFasta
+				// .getSubsequenceAt(contig, precedingGenomicPosition,
+				// precedingGenomicPosition + operatorLength)
+				// .getBases();
 
-					GenotypeID genotypeID = new GenotypeID(
-							GenotypeEventType.DELETION, contig,
-							precedingGenomicPosition, ref, alt);
-					// TODO only adding insertions
-					// TODO confirm that's the right move. Then delete this code
-					// block.
-					// addSpecialGenotype(specialGenotypes, genotypeID);
-				}
+				// GenotypeID genotypeID = new GenotypeID(
+				// GenotypeEventType.DELETION, contig,
+				// precedingGenomicPosition, ref, alt);
+				// TODO only adding insertions
+				// TODO confirm that's the right move. Then delete this code
+				// block.
+				// addSpecialGenotype(specialGenotypes, genotypeID);
+				// }
 
 				// add deletions to the pileup
 				for (int j = 0; j < operatorLength; j++)
 				{
 					if (pileupIndex >= 0 && pileupIndex <= lastPileupIndex)
 					{
-						positions[pileupIndex].addDeletion();
+						positions[pileupIndex].addDeletion(quality);
 					}
 
 					// increment pileupIndex but don't increment readIndex
@@ -363,12 +383,15 @@ public class DuplicateReadCluster
 
 	/**
 	 * 
-	 * @param genotypeID
+	 * increment the coverage count of the given genotype by 1 and
+	 * add base qualities to the insertion qualities
 	 * 
-	 *            increment the coverage count of the given genotype by 1
+	 * @param insertionQualities
+	 * @param genotypeID
 	 */
 	private void addSpecialGenotype(Map<GenotypeID, Genotype> specialGenotypes,
-			GenotypeID genotypeID)
+			Map<GenotypeID, int[]> insertionQualities, GenotypeID genotypeID,
+			int operatorLength)
 	{
 		Genotype genotype = specialGenotypes.get(genotypeID);
 
@@ -376,9 +399,30 @@ public class DuplicateReadCluster
 		{
 			genotype = new Genotype("FromPileup", genotypeID);
 			specialGenotypes.put(genotypeID, genotype);
+
+			if (genotypeID.type == GenotypeEventType.INSERTION)
+			{
+				int[] quals = new int[operatorLength];
+				for (int i = 0; i < quals.length; i++)
+				{
+					quals[i] = baseQualities[readIndex + i];
+				}
+
+				insertionQualities.put(genotypeID, quals);
+			}
 		}
 
 		genotype.totalSupportingCoverage++;
+
+		// also add insertion qualities
+		if (genotypeID.type == GenotypeEventType.INSERTION)
+		{
+			int[] quals = insertionQualities.get(genotypeID);
+			for (int i = 0; i < quals.length; i++)
+			{
+				quals[i] += baseQualities[readIndex + i];
+			}
+		}
 	}
 
 	/**
@@ -388,6 +432,10 @@ public class DuplicateReadCluster
 	 */
 	public void merge(DuplicateReadCluster other)
 	{
+		// TODO: check if this method is necessary.
+		// TODO: if yes, make sure it is correct in terms of insertion qaulities
+		// etc. !!!
+
 		psReadCount += other.psReadCount;
 		nsReadCount += other.nsReadCount;
 
@@ -433,9 +481,6 @@ public class DuplicateReadCluster
 	 * consensus sequences per strand first and then building the final cluster
 	 * consensus sequence.
 	 * 
-	 * If running in debug mode, write to the writer and return null. Otherwise
-	 * writer is null; return the consensus info
-	 * 
 	 * @param positiveStrand
 	 *            does the consensus read map on the positive strand or negative
 	 *            strand?
@@ -443,15 +488,14 @@ public class DuplicateReadCluster
 	 * @throws IOException
 	 */
 	/**
-	 * @param debugWriter
 	 * @param positiveStrand
 	 * @return
 	 * @throws IOException
 	 */
-	public String consensusSequenceInfo(BufferedWriter debugWriter,
-			BufferedWriter altAlleleWriter, boolean positiveStrand)
-			throws IOException
+	public String consensusSequenceInfo(BufferedWriter altAlleleWriter,
+			boolean positiveStrand) throws IOException
 	{
+
 		// TODO This method will undergo revision as we determine how exactly we
 		// want to build the consensus sequence. There are many parameters to
 		// play with.
@@ -466,6 +510,7 @@ public class DuplicateReadCluster
 		System.arraycopy(psConsensus, 0, nsConsensus, 0, psConsensus.length);
 		System.arraycopy(psConsensus, 0, consensus, 0, psConsensus.length);
 		consensusSequenceBuilder.setLength(0);
+		consensusQualityBuilder.setLength(0);
 
 		// compute per strand consensus sequence. Right now, just choosing the
 		// base with highest count at each position.
@@ -495,23 +540,24 @@ public class DuplicateReadCluster
 			finalizeStrandConsensus(psConsensus, psPositions, i, genotype);
 			finalizeStrandConsensus(nsConsensus, nsPositions, i, genotype);
 
-			// if same consensii, no problem (including N (-1) ie no coverage)
+			// if same consensii, no problem (including N i.e. -1 i.e. no
+			// coverage)
 			if (psConsensus[i] == nsConsensus[i])
 			{
 				consensus[i] = psConsensus[i];
 			}
-			// else if (psConsensus[i] == -1)
-			// {
-			// // if only one strand has coverage, accept that as consensus
-			// // base
-			// consensus[i] = nsConsensus[i];
-			// }
-			// else if (nsConsensus[i] == -1)
-			// {
-			// // if only one strand has coverage, accept that as consensus
-			// // base
-			// consensus[i] = psConsensus[i];
-			// }
+			else if (psConsensus[i] == -1 && !isAlt(nsConsensus[i], genotype))
+			{
+				// if only one strand has coverage, accept that as consensus
+				// base if it is genotype
+				consensus[i] = nsConsensus[i];
+			}
+			else if (nsConsensus[i] == -1 && !isAlt(psConsensus[i], genotype))
+			{
+				// if only one strand has coverage, accept that as consensus
+				// base if it is genotype
+				consensus[i] = psConsensus[i];
+			}
 			else
 			{
 				// right now requiring that non-genotype base have support on
@@ -519,9 +565,6 @@ public class DuplicateReadCluster
 
 				// in case the two strands have different consensus bases, fall
 				// back on genotype.
-
-				// TODO Assuming it is impossible to have 2 different bases as
-				// consensus where those bases are person's authentic genotype
 				int j;
 				for (j = 0; j < genotype.length; j++)
 				{
@@ -544,55 +587,39 @@ public class DuplicateReadCluster
 
 			// you have the consensus here. If it is non-genotype, write the alt
 			// allele info
-			if (isAlt(consensus[i], i, genotype))
+			if (isAlt(consensus[i], genotype))
 			{
 				writeAltAlleleInfo(i, genotype, altAlleleWriter);
 			}
 		}
 
-		// build the consensus sequence
+		// build the consensus sequence and quality
 		for (int i = 0; i < consensus.length; i++)
 		{
 			byte b = consensus[i];
+			char q;
 			if (b == -1)
 			{
 				b = 'N';
+				q = (char) (baseQualityRange[0] + 33);
+			}
+			else
+			{
+				q = getConsensusQuality(b, psPositions[i], nsPositions[i]);
 			}
 
 			consensusSequenceBuilder.append((char) b);
-		}
-
-		// if running in debug mode
-		if (contigOfInterest != null && contigOfInterest.equals(contig))
-		{
-			int baseOfInterestIndex = positionOfInterest - startPosition;
-
-			byte b = psConsensus[baseOfInterestIndex];
-			char psConsensusBase = (b == -1 ? 'N' : (char) b);
-
-			b = nsConsensus[baseOfInterestIndex];
-			char nsConsensusBase = (b == -1 ? 'N' : (char) b);
-
-			char consensusBase = consensusSequenceBuilder
-					.charAt(baseOfInterestIndex);
-
-			// print the read lines
-			for (StringBuilder line : linesOfInterest)
-			{
-				line.append("\t").append(psConsensusBase).append("\t")
-						.append(psReadCount).append("\t")
-						.append(nsConsensusBase).append("\t")
-						.append(nsReadCount).append("\t").append(consensusBase)
-						.append("\n");
-				debugWriter.write(line.toString());
-			}
-
-			return null;
+			consensusQualityBuilder.append(q);
 		}
 
 		// Include insertions
 		for (GenotypeID genotypeID : psSpecialGenotypes.keySet())
 		{
+			if (genotypeID.type != GenotypeEventType.INSERTION)
+			{
+				continue;
+			}
+
 			Genotype negative = nsSpecialGenotypes.get(genotypeID);
 
 			// must be present on both strands, must have at least 50% support
@@ -608,19 +635,23 @@ public class DuplicateReadCluster
 			// insert the insertion
 			int index = genotypeID.position - startPosition;
 			char[] bases = new char[genotypeID.alt.length];
+			char[] quals = getInsertionConsensusQuals(genotypeID);
+			// TODO: check if i should start at 1 !!!
 			for (int i = 0; i < bases.length; i++)
 			{
 				bases[i] = (char) genotypeID.alt[i];
 			}
 
 			consensusSequenceBuilder.insert(index, bases);
+			consensusQualityBuilder.insert(index, quals);
 		}
 
 		// trim trailing N's
 		int trimmedLength = consensusSequenceBuilder.length();
-		while (trimmedLength > 0)
+		while (trimmedLength - basesToTrim > 0)
 		{
-			if (consensusSequenceBuilder.charAt(trimmedLength - 1) != 'N')
+			if (consensusSequenceBuilder
+					.charAt((trimmedLength - basesToTrim) - 1) != 'N')
 			{
 				break;
 			}
@@ -635,6 +666,7 @@ public class DuplicateReadCluster
 		}
 
 		consensusSequenceBuilder.setLength(trimmedLength);
+		consensusQualityBuilder.setLength(trimmedLength);
 
 		// trim the leading and trailing n bases to avoid non-genomic bases
 		if (consensusSequenceBuilder.length() < 2 * basesToTrim)
@@ -643,34 +675,42 @@ public class DuplicateReadCluster
 		}
 
 		consensusSequenceBuilder.delete(0, basesToTrim);
+		consensusQualityBuilder.delete(0, basesToTrim);
 		int l = consensusSequenceBuilder.length();
 		consensusSequenceBuilder.delete(l - basesToTrim, l);
+		consensusQualityBuilder.delete(l - basesToTrim, l);
 
 		// remove deletion bases
-		String sequence = consensusSequenceBuilder.toString().replace("D", "");
+		l = consensusSequenceBuilder.length();
+		StringBuilder seq = new StringBuilder(consensusQualityBuilder.length());
+		StringBuilder qual = new StringBuilder(
+				consensusSequenceBuilder.length());
+		for (int i = 0; i < l; i++)
+		{
+			char c = consensusSequenceBuilder.charAt(i);
+			if (c == 'D')
+			{
+				continue;
+			}
+
+			seq.append(c);
+			qual.append(consensusQualityBuilder.charAt(i));
+		}
+
+		char[] sequence = seq.toString().toCharArray();
+		char[] qualities = qual.toString().toCharArray();
 
 		// if all bases were D.
 		// TODO see if there is a better way to write this method.
-		if (sequence.length() == 0)
+		if (sequence.length == 0)
 		{
 			return null;
-		}
-
-		// build consensus sequence qualities
-		// right now, returning constant quality of 50
-		// phred 50 + 33 = 83 = 'S'
-		// this could be average quality of consensus bases or some other scheme
-		// in future
-		char[] qualities = new char[sequence.length()];
-		for (int i = 0; i < qualities.length; i++)
-		{
-			qualities[i] = 'S';
 		}
 
 		// reverse the strand if necessary
 		if (!positiveStrand)
 		{
-			sequence = Util.reverseComplement(sequence);
+			Util.reverseComplement(sequence);
 			Util.reverse(qualities);
 		}
 
@@ -684,6 +724,55 @@ public class DuplicateReadCluster
 		return info.toString();
 	}
 
+	private char[] getInsertionConsensusQuals(GenotypeID genotypeID)
+	{
+		int psCount = psSpecialGenotypes
+				.get(genotypeID).totalSupportingCoverage;
+		int[] psQuals = psInsertionQualities.get(genotypeID);
+		int nsCount = nsSpecialGenotypes
+				.get(genotypeID).totalSupportingCoverage;
+		int[] nsQuals = nsInsertionQualities.get(genotypeID);
+
+		char[] quals = new char[psQuals.length];
+		for (int i = 0; i < quals.length; i++)
+		{
+			// take average of strand averages
+			quals[i] = (char) ((psQuals[i] / psCount + nsQuals[i] / nsCount)
+					/ 2);
+		}
+
+		return quals;
+	}
+
+	/**
+	 * Compute consensus quality using qualities on both positive and negative
+	 * strand
+	 * 
+	 * @param ps
+	 * @param ns
+	 * @return
+	 */
+	private char getConsensusQuality(byte consensusBase, PositionPileup ps,
+			PositionPileup ns)
+	{
+		int psQuality = ps.getConsensusQuality(consensusBase);
+		int nsQuality = ns.getConsensusQuality(consensusBase);
+		int quality = (psQuality + nsQuality) / 2;
+
+		// cap at the range boundaries
+		if (quality < baseQualityRange[0])
+		{
+			quality = baseQualityRange[0];
+		}
+		else if (quality > baseQualityRange[1])
+		{
+			quality = baseQualityRange[1];
+		}
+
+		// return prinatable ascii char
+		return (char) (quality + 33);
+	}
+
 	/**
 	 * for alt, check if non-consensus count is below threshold
 	 * 
@@ -693,7 +782,7 @@ public class DuplicateReadCluster
 	private void finalizeStrandConsensus(byte[] consensus,
 			PositionPileup[] pileup, int index, Byte[] genotype)
 	{
-		if (!isAlt(consensus[index], index, genotype))
+		if (!isAlt(consensus[index], genotype))
 		{
 			return;
 		}
@@ -735,9 +824,9 @@ public class DuplicateReadCluster
 
 	}
 
-	private boolean isAlt(byte allele, int index, Byte[] genotype)
+	private boolean isAlt(byte allele, Byte[] genotype)
 	{
-		if (allele == -1 || (allele == 'D' && index >= 115))
+		if (allele == -1) // || (allele == 'D' && index >= 115))
 		{
 			return false;
 		}

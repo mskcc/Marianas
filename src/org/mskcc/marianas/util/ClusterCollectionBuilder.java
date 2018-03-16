@@ -39,8 +39,11 @@ import htsjdk.samtools.SAMRecord;
  */
 public class ClusterCollectionBuilder
 {
-	private int wobble;
+	private int minMappingQuality;
+	private int minBaseQuality;
 	private int mismatches;
+	private int wobble;
+
 	private int minConsensusPercent;
 	private SlidingWindowBamReader reader;
 	private DuplicateReadClusterCollection[] currentClusterWindow;
@@ -76,11 +79,14 @@ public class ClusterCollectionBuilder
 	 *            the read strand (as opposed to fragment strand). We process
 	 *            the reads mapping mapping 5' -> 3' on one strand at a time
 	 */
-	public ClusterCollectionBuilder(File bamFile, int wobble, int mismatches,
+	public ClusterCollectionBuilder(File bamFile, int minMappingQuality,
+			int minBaseQuality, int mismatches, int wobble,
 			int minConsensusPercent, boolean positiveStrand)
 	{
-		this.wobble = wobble;
+		this.minMappingQuality = minMappingQuality;
+		this.minBaseQuality = minBaseQuality;
 		this.mismatches = mismatches;
+		this.wobble = wobble;
 		this.minConsensusPercent = minConsensusPercent;
 		this.positiveStrand = positiveStrand;
 		this.debugMode = StaticResources.getPositionOfInterest() != null;
@@ -94,7 +100,7 @@ public class ClusterCollectionBuilder
 		for (int i = 0; i < currentClusterWindow.length; i++)
 		{
 			currentClusterWindow[i] = new DuplicateReadClusterCollection(
-					clusterPool, minConsensusPercent);
+					clusterPool, minMappingQuality, minBaseQuality, minConsensusPercent);
 		}
 
 		// initial value to ensure that sliding starts promptly
