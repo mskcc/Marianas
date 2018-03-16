@@ -36,18 +36,20 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 	{
 		File bamFile = new File(args[0]);
 		File pileupFile = new File(args[1]);
-		int UMIMismatches = Integer.parseInt(args[2]);
-		int wobble = Integer.parseInt(args[3]);
-		int minConsensusPercent = Integer.parseInt(args[4]);
+		int minMappingQuality = Integer.parseInt(args[2]);
+		int minBaseQuality = Integer.parseInt(args[3]);
+		int UMIMismatches = Integer.parseInt(args[4]);
+		int wobble = Integer.parseInt(args[5]);
+		int minConsensusPercent = Integer.parseInt(args[6]);
 		// set the reference fasta
-		File refFastaFile = new File(args[5]);
-		File refFastaIndexFile = new File(args[5] + ".fai");
+		File refFastaFile = new File(args[7]);
+		File refFastaIndexFile = new File(args[7] + ".fai");
 		FastaSequenceIndex refFastaIndex = new FastaSequenceIndex(
 				refFastaIndexFile);
 		IndexedFastaSequenceFile refFasta = new IndexedFastaSequenceFile(
 				refFastaFile, refFastaIndex);
 		new StaticResources(refFasta, refFastaIndex, pileupFile, null);
-		File outputFolder = new File(args[6]);
+		File outputFolder = new File(args[8]);
 
 		// no args after this point
 
@@ -62,15 +64,17 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 		System.out.println("Processing " + firstPassFile.getAbsolutePath()
 				+ " to produce fastqs");
 
-		secondPass(bamFile, UMIMismatches, wobble, minConsensusPercent,
-				outputFolder, firstPassFile, altAlleleFile);
+		secondPass(bamFile, minMappingQuality, minBaseQuality, UMIMismatches,
+				wobble, minConsensusPercent, outputFolder, firstPassFile,
+				altAlleleFile);
 
 		long end = System.currentTimeMillis();
 		System.out.println("Finished processing in " + ((end - start) / 1000)
 				+ " seconds.");
 	}
 
-	private static void secondPass(File bamFile, int mismatches, int wobble,
+	private static void secondPass(File bamFile, int minMappingQuality,
+			int minBaseQuality, int mismatches, int wobble,
 			int minConsensusPercent, File outputFolder, File firstPassFile,
 			File altAlleleFile) throws Exception
 	{
@@ -85,7 +89,8 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 				new FileWriter(altAlleleFile));
 
 		ClusterCollectionBuilder clusterBuilder = new ClusterCollectionBuilder(
-				bamFile, wobble, mismatches, minConsensusPercent, false);
+				bamFile, minMappingQuality, minBaseQuality, mismatches, wobble,
+				minConsensusPercent, false);
 
 		DuplicateReadClusterCollection clusterCollection = clusterBuilder
 				.next();
