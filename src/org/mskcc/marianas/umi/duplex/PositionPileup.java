@@ -236,17 +236,23 @@ public class PositionPileup
 	 */
 	public int getConsensusQuality(byte consensusBase)
 	{
+		int coverage = getCoverage();
+		if (coverage == 0)
+		{
+			return 0;
+		}
+
 		// take average, multiply by replication factor
 		int qualitySum = getQualitySum(consensusBase);
 		int nonBaseQualitySum = baseQualities[0] + baseQualities[1]
 				+ baseQualities[2] + baseQualities[3] + deletionQualities
 				- qualitySum;
 		qualitySum -= nonBaseQualitySum;
-		double qualityAverage = (qualitySum * 1.0) / getCoverage();
+
+		double qualityAverage = (qualitySum * 1.0) / coverage;
 
 		int counts = getCount(consensusBase);
-		int nonBaseCounts = baseCounts[0] + baseCounts[1] + baseCounts[2]
-				+ baseCounts[3] + deletions - counts;
+		int nonBaseCounts = coverage - counts;
 		counts -= nonBaseCounts;
 
 		double replicationFactor = FastMath.log(2, counts) + 1;

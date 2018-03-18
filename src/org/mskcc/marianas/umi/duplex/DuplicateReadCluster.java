@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.math3.util.FastMath;
 import org.mskcc.juber.genotype.Genotype;
 import org.mskcc.juber.genotype.GenotypeEventType;
 import org.mskcc.juber.genotype.GenotypeID;
@@ -77,7 +78,10 @@ public class DuplicateReadCluster
 
 	private byte[] psConsensus;
 	private byte[] nsConsensus;
+	private int[] psConsensusQuals;
+	private int[] nsConsensusQuals;
 	private byte[] consensus;
+
 	private StringBuilder consensusSequenceBuilder;
 	private StringBuilder consensusQualityBuilder;
 
@@ -109,6 +113,8 @@ public class DuplicateReadCluster
 		this.psConsensus = new byte[maxReadLength];
 		this.nsConsensus = new byte[maxReadLength];
 		this.consensus = new byte[maxReadLength];
+		this.psConsensusQuals = new int[maxReadLength];
+		this.nsConsensusQuals = new int[maxReadLength];
 		this.consensusSequenceBuilder = new StringBuilder(maxReadLength + 50);
 		this.consensusQualityBuilder = new StringBuilder(maxReadLength + 50);
 
@@ -278,21 +284,44 @@ public class DuplicateReadCluster
 				// CIGAR and quitting when it goes out of the region
 				if (pileupIndex >= 1 && pileupIndex <= lastPileupIndex + 1)
 				{
-					// add insertion to special genotypes map
-					// make genotype id
-					int precedingGenomicPosition = startPosition
-							+ (pileupIndex - 1);
-					byte[] ref = new byte[] { referenceBases[pileupIndex - 1] };
-					byte[] alt = new byte[operatorLength + 1];
-					alt[0] = ref[0];
-					System.arraycopy(readBases, readIndex, alt, 1,
+					// get insertion qualities
+					byte[] altQuals = new byte[operatorLength];
+					System.arraycopy(baseQualities, readIndex, altQuals, 0,
 							operatorLength);
-					GenotypeID genotypeID = new GenotypeID(
-							GenotypeEventType.INSERTION, contig,
-							precedingGenomicPosition, ref, alt);
-					// add
-					addSpecialGenotype(specialGenotypes, insertionQualities,
-							genotypeID, operatorLength);
+					int q = 0;
+					for (int j = 0; j < altQuals.length; j++)
+					{
+						q += altQuals[j];
+					}
+
+					q = q / altQuals.length;
+
+					// record insertion only if average quality is greater than
+					// threshold
+					if (q >= minBaseQuality)
+					{
+						// add insertion to special genotypes map
+						// make genotype id
+						int precedingGenomicPosition = startPosition
+								+ (pileupIndex - 1);
+						byte[] ref = new byte[] {
+								referenceBases[pileupIndex - 1] };
+						byte[] alt = new byte[operatorLength + 1];
+						// altQuals does not contain quality for preceding base
+						// since that is just reference base,
+						// not a base from the read!!!
+
+						alt[0] = ref[0];
+						System.arraycopy(readBases, readIndex, alt, 1,
+								operatorLength);
+
+						GenotypeID genotypeID = new GenotypeID(
+								GenotypeEventType.INSERTION, contig,
+								precedingGenomicPosition, ref, alt);
+						// add
+						addSpecialGenotype(specialGenotypes, insertionQualities,
+								genotypeID, altQuals);
+					}
 				}
 
 				// increment readIndex but not PileupIndex
@@ -328,16 +357,19 @@ public class DuplicateReadCluster
 				// addSpecialGenotype(specialGenotypes, genotypeID);
 				// }
 
-				// add deletions to the pileup
-				for (int j = 0; j < operatorLength; j++)
+				if (quality >= minBaseQuality)
 				{
-					if (pileupIndex >= 0 && pileupIndex <= lastPileupIndex)
+					// add deletions to the pileup
+					for (int j = 0; j < operatorLength; j++)
 					{
-						positions[pileupIndex].addDeletion(quality);
-					}
+						if (pileupIndex >= 0 && pileupIndex <= lastPileupIndex)
+						{
+							positions[pileupIndex].addDeletion(quality);
+						}
 
-					// increment pileupIndex but don't increment readIndex
-					pileupIndex++;
+						// increment pileupIndex but don't increment readIndex
+						pileupIndex++;
+					}
 				}
 			}
 			else if (operator.equals(CigarOperator.SOFT_CLIP))
@@ -391,37 +423,27 @@ public class DuplicateReadCluster
 	 */
 	private void addSpecialGenotype(Map<GenotypeID, Genotype> specialGenotypes,
 			Map<GenotypeID, int[]> insertionQualities, GenotypeID genotypeID,
-			int operatorLength)
+			byte[] altQuals)
 	{
 		Genotype genotype = specialGenotypes.get(genotypeID);
+		int[] quals = insertionQualities.get(genotypeID);
 
 		if (genotype == null)
 		{
 			genotype = new Genotype("FromPileup", genotypeID);
 			specialGenotypes.put(genotypeID, genotype);
 
-			if (genotypeID.type == GenotypeEventType.INSERTION)
-			{
-				int[] quals = new int[operatorLength];
-				for (int i = 0; i < quals.length; i++)
-				{
-					quals[i] = baseQualities[readIndex + i];
-				}
-
-				insertionQualities.put(genotypeID, quals);
-			}
+			// also add new quals array
+			quals = new int[altQuals.length];
+			insertionQualities.put(genotypeID, quals);
 		}
 
 		genotype.totalSupportingCoverage++;
 
-		// also add insertion qualities
-		if (genotypeID.type == GenotypeEventType.INSERTION)
+		// update quality values in the quals array
+		for (int i = 0; i < quals.length; i++)
 		{
-			int[] quals = insertionQualities.get(genotypeID);
-			for (int i = 0; i < quals.length; i++)
-			{
-				quals[i] += baseQualities[readIndex + i];
-			}
+			quals[i] += altQuals[i];
 		}
 	}
 
@@ -450,28 +472,44 @@ public class DuplicateReadCluster
 		for (GenotypeID id : other.psSpecialGenotypes.keySet())
 		{
 			Genotype otherGenotype = other.psSpecialGenotypes.get(id);
+			int[] otherQuals = other.psInsertionQualities.get(id);
 			Genotype genotype = psSpecialGenotypes.get(id);
+			int[] quals = psInsertionQualities.get(id);
 			if (genotype == null)
 			{
 				psSpecialGenotypes.put(id, otherGenotype);
+				psInsertionQualities.put(id, otherQuals);
 			}
 			else
 			{
 				genotype.totalSupportingCoverage += otherGenotype.totalSupportingCoverage;
+				for (int j = 0; j < quals.length; j++)
+				{
+					quals[j] += otherQuals[j];
+				}
+
 			}
 		}
 
 		for (GenotypeID id : other.nsSpecialGenotypes.keySet())
 		{
 			Genotype otherGenotype = other.nsSpecialGenotypes.get(id);
+			int[] otherQuals = other.nsInsertionQualities.get(id);
 			Genotype genotype = nsSpecialGenotypes.get(id);
+			int[] quals = nsInsertionQualities.get(id);
 			if (genotype == null)
 			{
 				nsSpecialGenotypes.put(id, otherGenotype);
+				nsInsertionQualities.put(id, otherQuals);
 			}
 			else
 			{
 				genotype.totalSupportingCoverage += otherGenotype.totalSupportingCoverage;
+				for (int j = 0; j < quals.length; j++)
+				{
+					quals[j] += otherQuals[j];
+				}
+
 			}
 		}
 	}
@@ -505,6 +543,8 @@ public class DuplicateReadCluster
 		for (int i = 0; i < psConsensus.length; i++)
 		{
 			psConsensus[i] = -1;
+			psConsensusQuals[i] = 0;
+			nsConsensusQuals[i] = 0;
 		}
 
 		System.arraycopy(psConsensus, 0, nsConsensus, 0, psConsensus.length);
@@ -585,8 +625,20 @@ public class DuplicateReadCluster
 
 			}
 
-			// you have the consensus here. If it is non-genotype, write the alt
-			// allele info
+			// compute base quality
+			byte b = consensus[i];
+			if (b == -1)
+			{
+				psConsensusQuals[i] = nsConsensusQuals[i] = baseQualityRange[0];
+			}
+			else
+			{
+				psConsensusQuals[i] = psPositions[i].getConsensusQuality(b);
+				nsConsensusQuals[i] = nsPositions[i].getConsensusQuality(b);
+			}
+
+			// you have the consensus and quality here. If it is non-genotype,
+			// write the alt allele info
 			if (isAlt(consensus[i], genotype))
 			{
 				writeAltAlleleInfo(i, genotype, altAlleleWriter);
@@ -597,19 +649,30 @@ public class DuplicateReadCluster
 		for (int i = 0; i < consensus.length; i++)
 		{
 			byte b = consensus[i];
-			char q;
+			int quality;
 			if (b == -1)
 			{
 				b = 'N';
-				q = (char) (baseQualityRange[0] + 33);
+				quality = baseQualityRange[0];
 			}
 			else
 			{
-				q = getConsensusQuality(b, psPositions[i], nsPositions[i]);
+				quality = psConsensusQuals[i] + nsConsensusQuals[i];
+
+				// cap at the range boundaries
+				if (quality < baseQualityRange[0])
+				{
+					quality = baseQualityRange[0];
+				}
+				else if (quality > baseQualityRange[1])
+				{
+					quality = baseQualityRange[1];
+				}
 			}
 
 			consensusSequenceBuilder.append((char) b);
-			consensusQualityBuilder.append(q);
+			// write printable ascii base quality value
+			consensusQualityBuilder.append((char) (quality + 33));
 		}
 
 		// Include insertions
@@ -633,13 +696,13 @@ public class DuplicateReadCluster
 			}
 
 			// insert the insertion
-			int index = genotypeID.position - startPosition;
-			char[] bases = new char[genotypeID.alt.length];
+			int index = genotypeID.position - startPosition + 1;
+			char[] bases = new char[genotypeID.alt.length - 1];
 			char[] quals = getInsertionConsensusQuals(genotypeID);
-			// TODO: check if i should start at 1 !!!
+			// get the insertion bases, without the ref base
 			for (int i = 0; i < bases.length; i++)
 			{
-				bases[i] = (char) genotypeID.alt[i];
+				bases[i] = (char) genotypeID.alt[i + 1];
 			}
 
 			consensusSequenceBuilder.insert(index, bases);
@@ -724,6 +787,11 @@ public class DuplicateReadCluster
 		return info.toString();
 	}
 
+	/**
+	 * 
+	 * @param genotypeID
+	 * @return ascii printable qualities for the insertion bases
+	 */
 	private char[] getInsertionConsensusQuals(GenotypeID genotypeID)
 	{
 		int psCount = psSpecialGenotypes
@@ -733,44 +801,33 @@ public class DuplicateReadCluster
 				.get(genotypeID).totalSupportingCoverage;
 		int[] nsQuals = nsInsertionQualities.get(genotypeID);
 
+		double psReplicationFactor = FastMath.log(2, psCount) + 1;
+		double nsReplicationFactor = FastMath.log(2, nsCount) + 1;
+
 		char[] quals = new char[psQuals.length];
 		for (int i = 0; i < quals.length; i++)
 		{
-			// take average of strand averages
-			quals[i] = (char) ((psQuals[i] / psCount + nsQuals[i] / nsCount)
-					/ 2);
+			int p = (int) (((psQuals[i] * 1.0) / psCount)
+					* psReplicationFactor);
+			int n = (int) (((nsQuals[i] * 1.0) / nsCount)
+					* nsReplicationFactor);
+			int qual = p + n;
+
+			// cap at the range boundaries
+			if (qual < baseQualityRange[0])
+			{
+				qual = baseQualityRange[0];
+			}
+			else if (qual > baseQualityRange[1])
+			{
+				qual = baseQualityRange[1];
+			}
+
+			// make ascii printable quality values
+			quals[i] = (char) (qual + 33);
 		}
 
 		return quals;
-	}
-
-	/**
-	 * Compute consensus quality using qualities on both positive and negative
-	 * strand
-	 * 
-	 * @param ps
-	 * @param ns
-	 * @return
-	 */
-	private char getConsensusQuality(byte consensusBase, PositionPileup ps,
-			PositionPileup ns)
-	{
-		int psQuality = ps.getConsensusQuality(consensusBase);
-		int nsQuality = ns.getConsensusQuality(consensusBase);
-		int quality = (psQuality + nsQuality) / 2;
-
-		// cap at the range boundaries
-		if (quality < baseQualityRange[0])
-		{
-			quality = baseQualityRange[0];
-		}
-		else if (quality > baseQualityRange[1])
-		{
-			quality = baseQualityRange[1];
-		}
-
-		// return prinatable ascii char
-		return (char) (quality + 33);
 	}
 
 	/**
@@ -803,8 +860,7 @@ public class DuplicateReadCluster
 			BufferedWriter altAlleleWriter) throws IOException
 	{
 		// chr, start, UMI, altposition, genotype, consensus, pscount,
-		// altpscount, nscount,
-		// altnscount
+		// altpscount, psquality, nscount, altnscount, nsquality
 		altAlleleWriter.write(contig + "\t");
 		altAlleleWriter.write(startPosition + "\t");
 		altAlleleWriter.write(UMI + "\t");
@@ -819,8 +875,10 @@ public class DuplicateReadCluster
 		altAlleleWriter.write((char) consensus[i] + "\t");
 		altAlleleWriter.write(psPositions[i].getCoverage() + "\t");
 		altAlleleWriter.write(psPositions[i].getCount(consensus[i]) + "\t");
+		altAlleleWriter.write(psConsensusQuals[i] + "\t");
 		altAlleleWriter.write(nsPositions[i].getCoverage() + "\t");
-		altAlleleWriter.write(nsPositions[i].getCount(consensus[i]) + "\n");
+		altAlleleWriter.write(nsPositions[i].getCount(consensus[i]) + "\t");
+		altAlleleWriter.write(nsConsensusQuals[i] + "\n");
 
 	}
 
