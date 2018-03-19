@@ -282,7 +282,7 @@ public class DuplicateReadCluster
 			{
 				// TODO replace this boundary check with proper tracking of
 				// CIGAR and quitting when it goes out of the region
-				if (pileupIndex >= 1 && pileupIndex <= lastPileupIndex + 1)
+				if (pileupIndex >= 0 && pileupIndex <= lastPileupIndex + 1)
 				{
 					// get insertion qualities
 					byte[] altQuals = new byte[operatorLength];
@@ -304,8 +304,24 @@ public class DuplicateReadCluster
 						// make genotype id
 						int precedingGenomicPosition = startPosition
 								+ (pileupIndex - 1);
-						byte[] ref = new byte[] {
-								referenceBases[pileupIndex - 1] };
+
+						byte[] ref;
+						// reference position just to the left of current region
+						// i.e. this is an insertion at the beginning of read
+						if (pileupIndex == 0)
+						{
+							ref = referenceFasta
+									.getSubsequenceAt(contig,
+											precedingGenomicPosition,
+											precedingGenomicPosition)
+									.getBases();
+						}
+						else
+						{
+							ref = new byte[] {
+									referenceBases[pileupIndex - 1] };
+						}
+
 						byte[] alt = new byte[operatorLength + 1];
 						// altQuals does not contain quality for preceding base
 						// since that is just reference base,
