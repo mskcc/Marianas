@@ -56,6 +56,10 @@ public class DuplicateReadCluster
 	private int startPosition;
 	private String UMI;
 
+	// names of reads that are part of this cluster. Mostly for debugging
+	// purpose
+	private List<String> memberReads;
+
 	// for debug module
 	private String contigOfInterest;
 	private int positionOfInterest;
@@ -123,6 +127,8 @@ public class DuplicateReadCluster
 		psInsertionQualities = new HashMap<GenotypeID, int[]>();
 		nsInsertionQualities = new HashMap<GenotypeID, int[]>();
 
+		memberReads = new ArrayList<String>();
+
 		matePositions = new HashMap<String, Integer>();
 
 		// if running in debug mode
@@ -181,6 +187,8 @@ public class DuplicateReadCluster
 		psInsertionQualities.clear();
 		nsInsertionQualities.clear();
 
+		memberReads.clear();
+
 		matePositions.clear();
 	}
 
@@ -207,6 +215,8 @@ public class DuplicateReadCluster
 		{
 			return;
 		}
+
+		memberReads.add(record.getReadName());
 
 		recordMatePosition(record);
 
@@ -235,8 +245,9 @@ public class DuplicateReadCluster
 		int operatorLength = 0;
 		Cigar cigar = record.getCigar();
 		List<CigarElement> elements = cigar.getCigarElements();
+		int numCigarElements = elements.size();
 
-		for (int i = 0; i < elements.size(); i++)
+		for (int i = 0; i < numCigarElements; i++)
 		{
 			CigarElement e = elements.get(i);
 			CigarOperator operator = e.getOperator();
@@ -252,6 +263,14 @@ public class DuplicateReadCluster
 						// TODO test fulcrum
 						if (baseQualities[readIndex] >= minBaseQuality)
 						{
+							// if (contig.equals("1") && startPosition ==
+							// 11293364
+							// && UMI.equals("AAC+TTT")
+							// && pileupIndex == 19)
+							// {
+							// int a = 5;
+							// }
+
 							positions[pileupIndex].addBase(readBases[readIndex],
 									baseQualities[readIndex]);
 						}
@@ -282,7 +301,9 @@ public class DuplicateReadCluster
 			{
 				// TODO replace this boundary check with proper tracking of
 				// CIGAR and quitting when it goes out of the region
-				if (pileupIndex >= 0 && pileupIndex <= lastPileupIndex + 1)
+				// ignore insertions at the very beginning and very end of the
+				// read
+				if (i > 0 && i < numCigarElements - 1)
 				{
 					// get insertion qualities
 					byte[] altQuals = new byte[operatorLength];
@@ -347,43 +368,43 @@ public class DuplicateReadCluster
 			{
 				// assign deletion quality as average of preceding and
 				// following base qualities
-				byte quality = (byte) ((baseQualities[readIndex - 1]
-						+ baseQualities[readIndex]) / 2);
-
-				// add deletion to the special genotypes map iff it is a
-				// multi-base deletion
-				// if (operatorLength > 1 && pileupIndex >= 1
-				// && pileupIndex <= lastPileupIndex + 1)
-				// {
-				// make genotype id
-				// int precedingGenomicPosition = startPosition
-				// + (pileupIndex - 1);
-				// byte[] alt = new byte[] { referenceBases[pileupIndex - 1] };
-				// byte[] ref = referenceFasta
-				// .getSubsequenceAt(contig, precedingGenomicPosition,
-				// precedingGenomicPosition + operatorLength)
-				// .getBases();
-
-				// GenotypeID genotypeID = new GenotypeID(
-				// GenotypeEventType.DELETION, contig,
-				// precedingGenomicPosition, ref, alt);
-				// TODO only adding insertions
-				// TODO confirm that's the right move. Then delete this code
-				// block.
-				// addSpecialGenotype(specialGenotypes, genotypeID);
-				// }
-
-				if (quality >= minBaseQuality)
+				byte quality;
+				if (readIndex == 0)
 				{
-					// add deletions to the pileup
+					quality = baseQualities[readIndex];
+				}
+				else if (readIndex == baseQualities.length)
+				{
+					quality = baseQualities[readIndex - 1];
+				}
+				else
+				{
+					quality = (byte) ((baseQualities[readIndex - 1]
+							+ baseQualities[readIndex]) / 2);
+				}
+
+				// skip the entire deletion if it is at the beginning or end of
+				// the read or if it does not meet quality criterion
+				// just increment the pileupIndex in that case
+				if (i == 0 || i == numCigarElements - 1
+						|| quality < minBaseQuality)
+				{
+					pileupIndex += operatorLength;
+				}
+				else
+				{
+					// add deletions to the pileup, one by one
 					for (int j = 0; j < operatorLength; j++)
 					{
+						// don't add deletion if it is outside pileup range
 						if (pileupIndex >= 0 && pileupIndex <= lastPileupIndex)
 						{
 							positions[pileupIndex].addDeletion(quality);
 						}
 
 						// increment pileupIndex but don't increment readIndex
+						// increment pileupIndex even if you decide not to add
+						// deletion due to above conditions
 						pileupIndex++;
 					}
 				}
@@ -476,6 +497,8 @@ public class DuplicateReadCluster
 
 		psReadCount += other.psReadCount;
 		nsReadCount += other.nsReadCount;
+
+		memberReads.addAll(other.memberReads);
 
 		// merge position pileups
 		for (int i = 0; i < psPositions.length; i++)
@@ -726,26 +749,27 @@ public class DuplicateReadCluster
 		}
 
 		// trim trailing N's
-		int trimmedLength = consensusSequenceBuilder.length();
-		while (trimmedLength - basesToTrim > 0)
+		int index = consensusSequenceBuilder.length() - 1;
+		while (index - basesToTrim > 0)
 		{
-			if (consensusSequenceBuilder
-					.charAt((trimmedLength - basesToTrim) - 1) != 'N')
+			if (consensusSequenceBuilder.charAt(index) != 'N'
+					&& consensusSequenceBuilder
+							.charAt(index - basesToTrim) != 'N')
 			{
 				break;
 			}
 
-			trimmedLength--;
+			index--;
 		}
 
 		// the consensus is all N's
-		if (trimmedLength == 0)
+		if (index - basesToTrim == 0)
 		{
 			return null;
 		}
 
-		consensusSequenceBuilder.setLength(trimmedLength);
-		consensusQualityBuilder.setLength(trimmedLength);
+		consensusSequenceBuilder.setLength(index + 1);
+		consensusQualityBuilder.setLength(index + 1);
 
 		// trim the leading and trailing n bases to avoid non-genomic bases
 		if (consensusSequenceBuilder.length() < 2 * basesToTrim)

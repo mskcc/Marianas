@@ -67,13 +67,6 @@ public class DuplicateReadClusterCollection
 	{
 		DuplicateReadCluster cluster = clusters.get(UMI);
 
-		// if (record.getReferenceName().equals("6")
-		// && record.getAlignmentStart() == 117725360
-		// && UMI.equals("CTC+GCA"))
-		// {
-		// int a = 5;
-		// }
-
 		if (cluster == null)
 		{
 			// TODO decide if you want to use Apache Pool !!!
