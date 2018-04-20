@@ -22,6 +22,15 @@ awk 'BEGIN{FS=OFS="\t"; while(getline < "custom-1-gene.txt"){a[$1]=$1}}{split($5
 # it still requires the reference fasta irrespective of MD tag
 samtools mpileup -C50 -O -A -d 1000000 --excl-flags UNMAP,SECONDARY  -f ~/resources/hg19-ucsc/human_hg19.fa  a.bam > a-pileup-samtools.txt
 
+# get BRAF part of pileup
+cat a-pileup-samtools.txt | awk '$1=="chr7" && $2>=140430000 && $2<=140650000' | less
+
+# sort the pileup file created by LocusPocus Metrics module
+sort -k 1,1 -k 2,2n a-pileup.txt > t
+
+
+
+
 
 # full and partial runs
 from fastqs
@@ -48,7 +57,8 @@ for f in `ls -t StdLogFiles/*.stderr`; do cat $f >> error.txt; done
 
 # kill all jobs
 for jobID in `bjobs | tail -n +2 | cut -d ' ' -f 1`; do bkill $jobID; done
-
+bkill -b -u 0
+bkill -b -u patelju1
 
 # modify a pending notify job so that it is finished and the pipeline moves on
 bmod -wn 3466588
@@ -133,11 +143,11 @@ git commit; git push origin master
 tail -n +2 /home/patelju1/projects/Cercek-Colon/run-X-DMP-1/annotated_exonic_variants.txt | awk 'BEGIN{FS=OFS="\t"}{ key=$3"\t"$4"\t"$5"\t"$6; if(m[key]!=null) next; m[key]=key; name=$8""substr($14, 2); print key"\t"name  }' > Cercek-Colon.txt
 
 # just add patient id to annotated_exonic_variants.txt
-awk 'BEGIN{FS=OFS="\t"; while(getline < "title_file.txt"){pid[$3]=$5}}{if(NR==1){$1="Sample\tPatient"; print; next;} $1=$1"\t"pid[$1]; print}' annotated_exonic_variants.txt > annotated_exonic_variants-with-patient-id.txt
+awk 'BEGIN{FS=OFS="\t"; while(getline < "title_file.txt"){pid[$3]=$5}}{if(NR==1){$1="Sample\tPatient"; print; next;} $1=$1"\t"pid[$1]; for(i=37; i<=NF; i++){split($i, a, ";"); split(a[3], c, "="); if(c[2]==0) {$i="-"}} print}' annotated_exonic_variants.txt > annotated_exonic_variants-with-patient-id.txt
 
 
 # pull genotypes for various samples for given patient from annotated_exonic_variants-with-patient-id.txt file
-awk 'BEGIN{ patientName="AC-pt1"; FS=OFS="\t"; while(getline < "title_file.txt"){patient[$3]=$5}}{if(NR==1){line="Mutation"; for(i=38; i<=NF; i++){sampleName[i]=$i; if(patient[$i]==patientName){line=line"\t"$i}} print line} else {if($2!=patientName) next; line=$9""substr($15, 2); for(i=38; i<=NF; i++){sample=sampleName[i]; if(index(sample, "05500-AJ-P-1")!=0 || patient[sample]!=patientName) continue; split($i, a, ";"); split(a[1], b, "="); dp=b[2]; split(a[3], b, "="); ad=b[2]; split(a[4], b, "="); vf=b[2];  col=vf" ("ad"/"dp")"; line=line"\t"col;} print line }}' annotated_exonic_variants-with-patient-id.txt
+awk 'BEGIN{ patientName="AC-pt1"; FS=OFS="\t"; while(getline < "title_file.txt"){patient[$3]=$5}}{if(NR==1){line="Mutation"; for(i=37; i<=NF; i++){sampleName[i]=$i; if(patient[$i]==patientName){line=line"\t"$i}} print line} else {if($2!=patientName) next; line=$9""substr($15, 2); for(i=37; i<=NF; i++){sample=sampleName[i]; if(index(sample, "05500-AJ-P-1")!=0 || patient[sample]!=patientName) continue; split($i, a, ";"); split(a[1], b, "="); dp=b[2]; split(a[3], b, "="); ad=b[2]; split(a[4], b, "="); vf=b[2];  col=vf" ("ad"/"dp")"; line=line"\t"col;} print line }}' annotated_exonic_variants-with-patient-id.txt
 
 
 # find called mutations in given sample (these would get highlighted in the presentation)
@@ -188,22 +198,6 @@ gunzip -c Sample_SK-PB-191-G-30-Loop_IGO_05500_CR_9/SK-PB-191-G-30-Loop_IGO_0550
 
 # calculate substitution rates from a pileup file
 awk 'BEGIN{FS=OFS="\t"; base[5]="A"; base[6]="C"; base[7]="G"; base[8]="T"}{max=-1; garbage=0; genotype=-1; for(i=5; i<=8; i++){if($i>max){max=$i; genotype=i}} for(i=5; i<=8; i++){if(i==genotype) continue; if($i>max*.1) next}   for(i=5; i<=8; i++){if(i==genotype) continue; substitution=base[genotype]">"base[i]; genotypeCount[substitution]+=max; altCount[substitution]+=$i;}}END{for(s in genotypeCount){print s, genotypeCount[s], altCount[s], 100*altCount[s]/(genotypeCount[s]+altCount[s]); g+=genotypeCount[s]; a+=altCount[s]} print "XAggregate", g, a, 100*a/(g+a) }' SK-PB-191-G-30-Loop-IGO-05500-CR-9_bc212_05500-CR_L000_mrg_cl_aln_srt_MD_IR_FX_BR-pileup.txt | sort -k 1,1 > G-30-collapsed-substitution-errors.txt
-
-
-# create a bed file from a mutations file for Waltz genotyping. There may be an easier way to make the bed file manually. This file might require editing (eg. compacting)
-awk '{FS=OFS="\t"}{width=length($3)+length($4)+10; start=$2-width; end=$2+width; print $1, start, end, "-", $5}' PUMA-Helen-Paper-Mutations.txt | sort -k 2,2n > PUMA-Helen-Paper-Mutations.bed
-
-
-# get the fingerprinting snp positions from a pileup
-awk 'BEGIN{FS=OFS="\t"; while(getline < "/home/patelju1/workspace/Marianas/bedFiles/IDT-FP-SNPs.txt"){snps[$2]=$2}}{if(snps[$1":"$2]!=null) print}' PC55-PC55-IGO-05500-CZ-5_bc213_Pool-05500-CZ-Tube1-1_L000_mrg_cl_aln_srt_MD_IR_FX_BR-pileup.txt | cut -f 1-8
-
-
-
-
-
-
-
-
 
 
 

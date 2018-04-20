@@ -85,10 +85,19 @@ public class VariantCaller
 			tumorTokens = tumorLine.split("\t");
 			normalTokens = normalLine.split("\t");
 
-			// tokens: 0-chr, 1-position, 2-ref, 3-total, 4-a, 5-c, 6-g, 7-t
+			// tokens: 0-chr, 1-position, 2-ref, 3-total, 4-a, 5-c, 6-g, 7-t,
+			// 8-insertions, 9-deletions
 
-			double tumorTotal = Double.parseDouble(tumorTokens[3]);
-			double normalTotal = Double.parseDouble(normalTokens[3]);
+			double tumorTotal = (Integer.parseInt(tumorTokens[4])
+					+ Integer.parseInt(tumorTokens[5])
+					+ Integer.parseInt(tumorTokens[6])
+					+ Integer.parseInt(tumorTokens[7])
+					+ Integer.parseInt(tumorTokens[9])) * 1.0;
+			double normalTotal = (Integer.parseInt(normalTokens[4])
+					+ Integer.parseInt(normalTokens[5])
+					+ Integer.parseInt(normalTokens[6])
+					+ Integer.parseInt(normalTokens[7])
+					+ Integer.parseInt(normalTokens[9])) * 1.0;
 
 			if (noCoverage(tumorTotal, normalTotal))
 			{

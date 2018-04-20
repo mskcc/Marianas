@@ -33,7 +33,7 @@ ggsave("Duplicate-Fraction.pdf", width=8, height=5)
 
 
 
-#Plot mean coverage from Waltz Metrics output (walitz-coverage.txt)
+#Plot mean coverage from Waltz Metrics output (locuspocus-coverage.txt)
 Coverage = read.table("waltz-coverage.txt", sep = "\t", header = TRUE, colClasses = c("character", rep("numeric", 2)))
 Coverage$Sample = factor(Coverage$Sample)
 
@@ -41,6 +41,8 @@ Coverage$Sample = factor(Coverage$Sample)
 #Coverage <- transform(Coverage, Sample=reorder(Sample, LibraryYield))
 # use factors to order X axis
 Coverage$Sample = factor(Coverage$Sample, levels=c("SK-PB-191-G-1-Loop-IGO-05500-CR-12", "SK-PB-191-G-3-Loop-IGO-05500-CR-11", "SK-PB-191-G-10-Loop-IGO-05500-CR-10", "SK-PB-191-G-30-Loop-IGO-05500-CR-9"))
+
+Coverage$Sample = factor(Coverage$Sample, levels=c("SK-PB-191-H-1-Loop-IGO-05500-CR-24", "SK-PB-191-H-3-Loop-IGO-05500-CR-23", "SK-PB-191-H-10-Loop-IGO-05500-CR-22", "SK-PB-191-H-30-Loop-IGO-05500-CR-21"))
 
 
 

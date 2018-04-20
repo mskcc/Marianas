@@ -9,7 +9,7 @@
 
 for f in `ls $1/*_R1_*.fastq.gz`
 do
-  bsub -q sol -cwd "." -R "rusage[mem=30]" -n 4 -We 1:00 -o %J.o -e %J.e ~/software/bin/juber-fastq-to-bam.sh $f $2
+  bsub -q sol -cwd "." -R "rusage[mem=30]" -n 4 -We 2:00 -o %J.o -e %J.e ~/software/bin/juber-fastq-to-bam.sh $f $2
 
 done
 
