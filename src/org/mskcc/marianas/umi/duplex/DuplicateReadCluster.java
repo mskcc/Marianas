@@ -625,13 +625,15 @@ public class DuplicateReadCluster
 			{
 				consensus[i] = psConsensus[i];
 			}
-			else if (psConsensus[i] == -1 && !isAlt(nsConsensus[i], genotype))
+			else if (psConsensus[i] == -1
+					&& (!isDuplex() || !isAlt(nsConsensus[i], genotype)))
 			{
 				// if only one strand has coverage, accept that as consensus
 				// base if it is genotype
 				consensus[i] = nsConsensus[i];
 			}
-			else if (nsConsensus[i] == -1 && !isAlt(psConsensus[i], genotype))
+			else if (nsConsensus[i] == -1
+					&& (!isDuplex() || !isAlt(psConsensus[i], genotype)))
 			{
 				// if only one strand has coverage, accept that as consensus
 				// base if it is genotype
@@ -715,37 +717,88 @@ public class DuplicateReadCluster
 		}
 
 		// Include insertions
-		for (GenotypeID genotypeID : psSpecialGenotypes.keySet())
+		if (isDuplex())
 		{
-			if (genotypeID.type != GenotypeEventType.INSERTION)
+			for (GenotypeID genotypeID : psSpecialGenotypes.keySet())
 			{
-				continue;
+				if (genotypeID.type != GenotypeEventType.INSERTION)
+				{
+					continue;
+				}
+
+				Genotype negative = nsSpecialGenotypes.get(genotypeID);
+
+				// must be present on both strands, must have at least 50%
+				// support
+				// on each strand
+				if (negative == null
+						|| negative.totalSupportingCoverage < nsReadCount / 2
+						|| psSpecialGenotypes.get(
+								genotypeID).totalSupportingCoverage < psReadCount
+										/ 2)
+				{
+					continue;
+				}
+
+				// insert the insertion
+				int index = genotypeID.position - startPosition + 1;
+				char[] bases = new char[genotypeID.alt.length - 1];
+				char[] quals = getInsertionConsensusQuals(genotypeID);
+				// get the insertion bases, without the ref base
+				for (int i = 0; i < bases.length; i++)
+				{
+					bases[i] = (char) genotypeID.alt[i + 1];
+				}
+
+				consensusSequenceBuilder.insert(index, bases);
+				consensusQualityBuilder.insert(index, quals);
+			}
+		}
+		else
+		{
+			// the family is simplex
+
+			Map<GenotypeID, Genotype> specialGenotypes = null;
+			int readCount = -1;
+
+			if (psReadCount > 0)
+			{
+				specialGenotypes = psSpecialGenotypes;
+				readCount = psReadCount;
+			}
+			else
+			{
+				specialGenotypes = nsSpecialGenotypes;
+				readCount = nsReadCount;
 			}
 
-			Genotype negative = nsSpecialGenotypes.get(genotypeID);
-
-			// must be present on both strands, must have at least 50% support
-			// on each strand
-			if (negative == null
-					|| negative.totalSupportingCoverage < nsReadCount / 2
-					|| psSpecialGenotypes.get(
-							genotypeID).totalSupportingCoverage < psReadCount)
+			for (GenotypeID genotypeID : specialGenotypes.keySet())
 			{
-				continue;
-			}
+				if (genotypeID.type != GenotypeEventType.INSERTION)
+				{
+					continue;
+				}
 
-			// insert the insertion
-			int index = genotypeID.position - startPosition + 1;
-			char[] bases = new char[genotypeID.alt.length - 1];
-			char[] quals = getInsertionConsensusQuals(genotypeID);
-			// get the insertion bases, without the ref base
-			for (int i = 0; i < bases.length; i++)
-			{
-				bases[i] = (char) genotypeID.alt[i + 1];
-			}
+				// must have at least 50% support on the strand
+				if (specialGenotypes.get(
+						genotypeID).totalSupportingCoverage < readCount / 2)
+				{
+					continue;
+				}
 
-			consensusSequenceBuilder.insert(index, bases);
-			consensusQualityBuilder.insert(index, quals);
+				// insert the insertion
+				int index = genotypeID.position - startPosition + 1;
+				char[] bases = new char[genotypeID.alt.length - 1];
+				char[] quals = getInsertionConsensusQuals(genotypeID);
+				// get the insertion bases, without the ref base
+				for (int i = 0; i < bases.length; i++)
+				{
+					bases[i] = (char) genotypeID.alt[i + 1];
+				}
+
+				consensusSequenceBuilder.insert(index, bases);
+				consensusQualityBuilder.insert(index, quals);
+			}
 		}
 
 		// trim trailing N's
@@ -827,6 +880,16 @@ public class DuplicateReadCluster
 		return info.toString();
 	}
 
+	private boolean isDuplex()
+	{
+		if (psReadCount > 0 && nsReadCount > 0)
+		{
+			return true;
+		}
+
+		return false;
+	}
+
 	/**
 	 * 
 	 * @param genotypeID
@@ -834,23 +897,48 @@ public class DuplicateReadCluster
 	 */
 	private char[] getInsertionConsensusQuals(GenotypeID genotypeID)
 	{
-		int psCount = psSpecialGenotypes
-				.get(genotypeID).totalSupportingCoverage;
-		int[] psQuals = psInsertionQualities.get(genotypeID);
-		int nsCount = nsSpecialGenotypes
-				.get(genotypeID).totalSupportingCoverage;
-		int[] nsQuals = nsInsertionQualities.get(genotypeID);
+		int psCount = -1;
+		int nsCount = -1;
+		int[] psQuals = null;
+		int[] nsQuals = null;
+		double psReplicationFactor = -1;
+		double nsReplicationFactor = -1;
 
-		double psReplicationFactor = FastMath.log(2, psCount) + 1;
-		double nsReplicationFactor = FastMath.log(2, nsCount) + 1;
+		if (psReadCount > 0)
+		{
+			psCount = psSpecialGenotypes
+					.get(genotypeID).totalSupportingCoverage;
+			psQuals = psInsertionQualities.get(genotypeID);
+			psReplicationFactor = FastMath.log(2, psCount) + 1;
+		}
 
-		char[] quals = new char[psQuals.length];
+		if (nsReadCount > 0)
+		{
+			nsCount = nsSpecialGenotypes
+					.get(genotypeID).totalSupportingCoverage;
+			nsQuals = nsInsertionQualities.get(genotypeID);
+			nsReplicationFactor = FastMath.log(2, nsCount) + 1;
+		}
+
+		char[] quals = new char[psQuals == null ? nsQuals.length
+				: psQuals.length];
 		for (int i = 0; i < quals.length; i++)
 		{
-			int p = (int) (((psQuals[i] * 1.0) / psCount)
-					* psReplicationFactor);
-			int n = (int) (((nsQuals[i] * 1.0) / nsCount)
-					* nsReplicationFactor);
+			int p = 0;
+			int n = 0;
+
+			if (psReadCount > 0)
+			{
+				p = (int) (((psQuals[i] * 1.0) / psCount)
+						* psReplicationFactor);
+			}
+
+			if (nsReadCount > 0)
+			{
+				n = (int) (((nsQuals[i] * 1.0) / nsCount)
+						* nsReplicationFactor);
+			}
+
 			int qual = p + n;
 
 			// cap at the range boundaries
