@@ -728,14 +728,16 @@ public class DuplicateReadCluster
 
 				Genotype negative = nsSpecialGenotypes.get(genotypeID);
 
-				// must be present on both strands, must have at least 50%
-				// support
-				// on each strand
+				// must be present on both strands, must have at least
+				// minConsensusPercent%
+				// support on each strand
+				// using 50% instead of minConsensusPercent% for the time being
 				if (negative == null
-						|| negative.totalSupportingCoverage < nsReadCount / 2
+						|| negative.totalSupportingCoverage < (nsReadCount * 50)
+								/ 100
 						|| psSpecialGenotypes.get(
-								genotypeID).totalSupportingCoverage < psReadCount
-										/ 2)
+								genotypeID).totalSupportingCoverage < (psReadCount
+										* 50) / 100)
 				{
 					continue;
 				}
@@ -779,9 +781,11 @@ public class DuplicateReadCluster
 					continue;
 				}
 
-				// must have at least 50% support on the strand
+				// must have at least minConsensusPercent% support on the strand
+				// using 50% instead of minConsensusPercent% for the time being
 				if (specialGenotypes.get(
-						genotypeID).totalSupportingCoverage < readCount / 2)
+						genotypeID).totalSupportingCoverage < (readCount * 50)
+								/ 100)
 				{
 					continue;
 				}

@@ -53,16 +53,18 @@ public class SeparateBams
 			SAMRecord record = iterator.next();
 
 			String[] words = record.getReadName().split(":");
-			int psSupport = Integer.parseInt(words[4]);
-			int nsSupport = Integer.parseInt(words[5]);
+			int ps1 = Integer.parseInt(words[4]);
+			int ns1 = Integer.parseInt(words[5]);
+			int ps2 = Integer.parseInt(words[8]);
+			int ns2 = Integer.parseInt(words[9]);
 
 			// duplex
-			if (psSupport >= 1 && nsSupport >= 1)
+			if (ps1 >= 1 && ns1 >= 1 && ps2 >= 1 && ns2 >= 1)
 			{
 				simplexDuplexWriter.addAlignment(record);
 				duplexWriter.addAlignment(record);
 			}
-			else if (psSupport + nsSupport >= 3)
+			else if (ps1 + ns1 >= 3 && ps2 + ns2 >= 3)
 			{
 				// simplex
 				simplexDuplexWriter.addAlignment(record);

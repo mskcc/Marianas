@@ -80,7 +80,8 @@ public class DuplexUMIBamToCollapsedFastqFirstPass
 				new FileWriter(altAlleleFile));
 
 		ClusterCollectionBuilder clusterBuilder = new ClusterCollectionBuilder(
-				bamFile, minMappingQuality, minBaseQuality, mismatches, wobble, minConsensusPercent, true);
+				bamFile, minMappingQuality, minBaseQuality, mismatches, wobble,
+				minConsensusPercent, true);
 
 		DuplicateReadClusterCollection clusterCollection = null;
 
