@@ -31,7 +31,7 @@ public class FindSpikedInAlleleFractions
 	 */
 	public static void main(String[] args) throws IOException
 	{
-		File sitesFile = new File("PC41-PC55-different-genotypes.txt");
+		File sitesFile = new File("005-086-different-genotypes.txt");
 		File spikeInInfoFile = new File("spikein-info.txt");
 
 		Map<String, SiteInfo> sites = loadSites(sitesFile);
@@ -41,7 +41,7 @@ public class FindSpikedInAlleleFractions
 
 		// write the output
 		BufferedWriter writer = new BufferedWriter(
-				new FileWriter("PC41-PC55-spike-in-results.txt"));
+				new FileWriter("005-086-spike-in-results.txt"));
 		writer.write(
 				"Name\tMethod\tSite\tGenotype1\tGenotype2\tAlleleOfInterest\tExpectedAF\tObservedAF\tAlleleCount\tTotalCount\n");
 

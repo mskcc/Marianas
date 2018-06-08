@@ -55,11 +55,11 @@ public class SpikeInInfo
 
 	public void addBaseCounts(String[] pileupWords)
 	{
-		this.total = Integer.parseInt(pileupWords[3]);
 		this.a = Integer.parseInt(pileupWords[4]);
 		this.c = Integer.parseInt(pileupWords[5]);
 		this.g = Integer.parseInt(pileupWords[6]);
 		this.t = Integer.parseInt(pileupWords[7]);
+		this.total = a + c + g + t;
 
 		process();
 	}
