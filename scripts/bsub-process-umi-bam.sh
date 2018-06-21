@@ -36,7 +36,7 @@ do
   outputFolder="$sample-folder"
   mkdir $outputFolder
 
-  bsub -eo %J.e -oo %J.o -cwd "$outputFolder" -R "rusage[mem=30]" -We 12:00 ~/software/bin/process-umi-bam.sh $bam $pileup
+  bsub -eo %J.e -oo %J.o -cwd "$outputFolder" -R "rusage[mem=30]" -R "span[ptile=4]" -n 4 -We 12:00 ~/software/bin/process-umi-bam.sh $bam $pileup
 
 done < $1
 
