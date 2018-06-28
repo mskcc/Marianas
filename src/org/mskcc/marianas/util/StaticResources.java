@@ -12,6 +12,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.TreeMap;
 
 import htsjdk.samtools.reference.FastaSequenceIndex;
@@ -30,6 +31,8 @@ public class StaticResources
 	private static FastaSequenceIndex referenceFastaIndex;
 	private static Map<String, Map<Integer, Byte[]>> genotypes;
 	private static String positionOfInterest;
+
+	public static final Random rng = new Random();
 
 	public static IndexedFastaSequenceFile getReference()
 	{
@@ -60,6 +63,8 @@ public class StaticResources
 		StaticResources.positionOfInterest = positionOfInterest;
 
 		readGenotypes(pileupFile);
+
+		rng.nextInt(10000);
 	}
 
 	/**
@@ -150,7 +155,7 @@ public class StaticResources
 				chrMap = new HashMap<Integer, Byte[]>();
 				genotypes.put(words[0], chrMap);
 			}
-			
+
 			List<Byte> list = new ArrayList<>(selected.values());
 			Collections.reverse(list);
 			chrMap.put(position, list.toArray(new Byte[0]));

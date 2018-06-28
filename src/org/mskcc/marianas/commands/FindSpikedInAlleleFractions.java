@@ -42,6 +42,7 @@ public class FindSpikedInAlleleFractions
 		// write the output
 		BufferedWriter writer = new BufferedWriter(
 				new FileWriter("005-086-spike-in-results.txt"));
+		
 		writer.write(
 				"Name\tMethod\tSite\tGenotype1\tGenotype2\tAlleleOfInterest\tExpectedAF\tObservedAF\tAlleleCount\tTotalCount\n");
 

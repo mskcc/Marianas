@@ -21,7 +21,7 @@ public class SeparateBamsTest
 		String collapsedBam = "../Waltz/bamFiles/collapsed/"
 				+ "MSK-L-017-cf-IGO-05500-DY-18_bc209_5500-DY-4_L000_mrg_cl_aln_srt_MD_IR_FX_BR.bam";
 
-		SeparateBams.main(new String[] { collapsedBam });
+		SeparateBamsSimplexOnly.main(new String[] { collapsedBam });
 	}
 
 }

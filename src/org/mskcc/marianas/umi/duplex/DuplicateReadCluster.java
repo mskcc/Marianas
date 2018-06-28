@@ -17,6 +17,7 @@ import org.mskcc.juber.genotype.GenotypeID;
 import org.mskcc.juber.util.Util;
 import org.mskcc.marianas.util.StaticResources;
 
+import gnu.trove.set.hash.TIntHashSet;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
@@ -263,14 +264,6 @@ public class DuplicateReadCluster
 						// TODO test fulcrum
 						if (baseQualities[readIndex] >= minBaseQuality)
 						{
-							// if (contig.equals("1") && startPosition ==
-							// 11293364
-							// && UMI.equals("AAC+TTT")
-							// && pileupIndex == 19)
-							// {
-							// int a = 5;
-							// }
-
 							positions[pileupIndex].addBase(readBases[readIndex],
 									baseQualities[readIndex]);
 						}
@@ -616,8 +609,13 @@ public class DuplicateReadCluster
 				genotype = new Byte[] { psPositions[i].getRefBase() };
 			}
 
-			finalizeStrandConsensus(psConsensus, psPositions, i, genotype);
-			finalizeStrandConsensus(nsConsensus, nsPositions, i, genotype);
+			// get a random permutation of genotype indexes
+			int[] indexes = getIndexPermutation(genotype.length);
+
+			finalizeStrandConsensus(psConsensus, psPositions, i, genotype,
+					indexes);
+			finalizeStrandConsensus(nsConsensus, nsPositions, i, genotype,
+					indexes);
 
 			// if same consensii, no problem (including N i.e. -1 i.e. no
 			// coverage)
@@ -641,11 +639,20 @@ public class DuplicateReadCluster
 			}
 			else
 			{
-				// right now requiring that non-genotype base have support on
-				// both strands to be recorded.
-
 				// in case the two strands have different consensus bases, fall
 				// back on genotype.
+
+				// int j;
+				// for (j = 0; j < indexes.length; j++)
+				// {
+				// byte g = genotype[indexes[j]];
+				// if (psConsensus[i] == g || nsConsensus[i] == g)
+				// {
+				// consensus[i] = g;
+				// break;
+				// }
+				// }
+
 				int j;
 				for (j = 0; j < genotype.length; j++)
 				{
@@ -658,7 +665,12 @@ public class DuplicateReadCluster
 				}
 
 				// could not assign genotype so far, choose the first from
-				// genotype array
+				// the index permutation
+				// if (j == indexes.length)
+				// {
+				// consensus[i] = genotype[indexes[0]];
+				// }
+
 				if (j == genotype.length)
 				{
 					consensus[i] = genotype[0];
@@ -884,6 +896,43 @@ public class DuplicateReadCluster
 		return info.toString();
 	}
 
+	/**
+	 * create a permutation of numbers from 0 (inclusive) to max (exclusive)
+	 * 
+	 * @param length
+	 * @return
+	 */
+	private int[] getIndexPermutation(int max)
+	{
+		if (max == 1)
+		{
+			return new int[] { 0 };
+		}
+		else if (max == 2)
+		{
+			int number = StaticResources.rng.nextInt(10000);
+			number = number % max;
+			return new int[] { number, 1 - number };
+		}
+
+		int[] permutation = new int[max];
+		TIntHashSet set = new TIntHashSet();
+		for (int index = 0; index < permutation.length; index++)
+		{
+			int number = StaticResources.rng.nextInt(10000) % max;
+			if (set.contains(number))
+			{
+				continue;
+			}
+
+			set.add(number);
+			permutation[index] = number;
+		}
+
+		return permutation;
+
+	}
+
 	private boolean isDuplex()
 	{
 		if (psReadCount > 0 && nsReadCount > 0)
@@ -967,9 +1016,10 @@ public class DuplicateReadCluster
 	 * 
 	 * @param i
 	 * @param genotype
+	 * @param indexes
 	 */
 	private void finalizeStrandConsensus(byte[] consensus,
-			PositionPileup[] pileup, int index, Byte[] genotype)
+			PositionPileup[] pileup, int index, Byte[] genotype, int[] indexes)
 	{
 		if (!isAlt(consensus[index], genotype))
 		{
@@ -983,6 +1033,8 @@ public class DuplicateReadCluster
 		if (consensusPercent + 0.01 < minConsensusPercent)
 		{
 			// fall back on genotype
+			// prefer genotype with highest count
+
 			consensus[index] = genotype[0];
 		}
 
