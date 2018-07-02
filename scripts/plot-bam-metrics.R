@@ -3,6 +3,8 @@
 library(ggplot2)
 library(dplyr)
 library(grid)
+library(gridExtra)
+library(scales)
 
 
 # read the read-counts.txt
@@ -122,6 +124,34 @@ onTarget$ID = factor(onTarget$ID, levels=c("SK-PB-191-G-1-IDT-IGO-05500-CR-4", "
 Coverage$Sample = factor(Coverage$Sample, levels=c("SK-PB-191-H-1-IDT-IGO-05500-CR-16", "SK-PB-191-H-1-Loop-IGO-05500-CR-24", "SK-PB-191-H-1-UA-IGO-05500-CR-20", "SK-PB-191-H-3-IDT-IGO-05500-CR-15", "SK-PB-191-H-3-Loop-IGO-05500-CR-23", "SK-PB-191-H-3-UA-IGO-05500-CR-19", "SK-PB-191-H-10-IDT-IGO-05500-CR-14", "SK-PB-191-H-10-Loop-IGO-05500-CR-22", "SK-PB-191-H-10-UA-IGO-05500-CR-18", "SK-PB-191-H-30-IDT-IGO-05500-CR-13", "SK-PB-191-H-30-Loop-IGO-05500-CR-21", "SK-PB-191-H-30-UA-IGO-05500-CR-17"))
 
 Coverage$Sample = factor(Coverage$Sample, levels=c("SK-PB-191-G-1-IDT-IGO-05500-CR-4", "SK-PB-191-G-1-Loop-IGO-05500-CR-12", "SK-PB-191-G-1-UA-IGO-05500-CR-8", "SK-PB-191-G-3-IDT-IGO-05500-CR-3", "SK-PB-191-G-3-Loop-IGO-05500-CR-11", "SK-PB-191-G-3-UA-IGO-05500-CR-7", "SK-PB-191-G-10-IDT-IGO-05500-CR-2", "SK-PB-191-G-10-Loop-IGO-05500-CR-10", "SK-PB-191-G-10-UA-IGO-05500-CR-6", "SK-PB-191-G-30-IDT-IGO-05500-CR-1", "SK-PB-191-G-30-Loop-IGO-05500-CR-9", "SK-PB-191-G-30-UA-IGO-05500-CR-5"))
+
+
+
+
+# plot viral presence
+i = read.table("TD-hpv-P72_0_IGO_05500_EY_8_S8-intervals.txt", sep = "\t", header = TRUE, colClasses = c("character", "numeric", "numeric", "character", rep("numeric", 5)))
+human=51325450
+ggplot(filter(i, FragmentsMapped>0), aes(TargetName,FragmentsMapped/human)) + geom_point(size=5, color="red") + geom_text(aes(label=paste(FragmentsMapped, '/', human)), hjust=-0.1, vjust=0) + xlab("Target") + ylab("Viral Fragments / Human Fragments") + ggtitle("Viral Presence") + theme(axis.text.x = element_text(angle = 45, hjust = 1, face="bold"), plot.margin = unit(c(.1, .1, .1, 1), "in")) + scale_y_continuous(labels=comma)
+ggsave("P72-0.pdf", width=8, height=5)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#
 
 
 

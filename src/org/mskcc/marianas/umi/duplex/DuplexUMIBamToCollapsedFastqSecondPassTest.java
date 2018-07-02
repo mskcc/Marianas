@@ -23,14 +23,11 @@ public class DuplexUMIBamToCollapsedFastqSecondPassTest
 		// "MSK-L-051-cf-IGO-05500-DY-21_bc212_5500-DY-4_L000_mrg_cl_aln_srt_MD_IR_FX_BR.bam";
 		String UMIProcessedBam = "/Users/patelj1/workspace/Waltz/bamFiles/chr1.bam";
 
-		// String outputFolder =
-		// "/Users/patelj1/workspace/Marianas/umi/collapsed-fastqs/Test/Test-1/";
-		// String outputFolder =
-		// "/Users/patelj1/workspace/Marianas/umi/collapsed-fastqs/run-5500-CR-G/G-30/";
-		// String outputFolder =
-		// "/Users/patelj1/workspace/Marianas/umi/collapsed-fastqs/Test/DL-12/";
-		String outputFolder = "/Users/patelj1/workspace/Marianas/collapsed-fastqs/test/";
+		///////////////////////////////////////
 
+		String pileupFile = "/Users/patelj1/workspace/Marianas/pileupFiles/pre-collapsing/"
+				+ "BL-tdm1-012-pl-T02-10ng-IGO-05500-ES-15_bc403_Pool-05500-ES-Tube3-1_L000_mrg_cl_aln_srt_MD_IR_FX_BR-pileup.txt";
+	
 		// String pileupFile =
 		// "/Users/patelj1/workspace/Marianas/bam-metrics/custom-panel-5500-CR-G-normal-bams/SK-PB-191-G-30-Loop-IGO-05500-CR-9_bc212_05500-CR_L000_mrg_cl_aln_srt_MD_IR_FX_BR-pileup.txt";
 		// String pileupFile =
@@ -43,10 +40,11 @@ public class DuplexUMIBamToCollapsedFastqSecondPassTest
 		// "/Users/patelj1/workspace/Marianas/pileupFiles/pre-collapsing/"
 		// +
 		// "MSK-L-017-bc-IGO-05500-DY-1_bc221_5500-DY-1_L000_mrg_cl_aln_srt_MD_IR_FX_BR-pileup.txt";
-		String pileupFile = "whatevs";
+		//String pileupFile = "whatevs";
 
+		String outputFolder = "/Users/patelj1/workspace/Marianas/collapsed-fastqs/test/";
 		String minMappingQuality = "1";
-		String minBaseQuality = "30";
+		String minBaseQuality = "20";
 		String UMIMismatches = "1";
 		String wobble = "2";
 		String minConsensusPercent = "90";

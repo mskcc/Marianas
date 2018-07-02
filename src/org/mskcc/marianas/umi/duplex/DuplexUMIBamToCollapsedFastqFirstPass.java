@@ -130,7 +130,7 @@ public class DuplexUMIBamToCollapsedFastqFirstPass
 			try
 			{
 				consensusSequenceInfo = cluster
-						.consensusSequenceInfo(altAlleleWriter, true);
+						.collapseEP(altAlleleWriter, true);
 			}
 			catch (Exception e)
 			{

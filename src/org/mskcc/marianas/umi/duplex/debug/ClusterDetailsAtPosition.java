@@ -111,7 +111,7 @@ public class ClusterDetailsAtPosition
 			}
 
 			// TODO decide what else you want to write for first pass
-			cluster.consensusSequenceInfo(writer, true);
+			cluster.collapseMe(writer, true);
 		}
 	}
 }

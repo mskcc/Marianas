@@ -17,6 +17,7 @@ import org.mskcc.juber.genotype.GenotypeID;
 import org.mskcc.juber.util.Util;
 import org.mskcc.marianas.util.StaticResources;
 
+import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.set.hash.TIntHashSet;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
@@ -110,8 +111,8 @@ public class DuplicateReadCluster
 		// initialize position pileups
 		for (int i = 0; i < psPositions.length; i++)
 		{
-			psPositions[i] = new PositionPileup();
-			nsPositions[i] = new PositionPileup();
+			psPositions[i] = new PositionPileup(60);
+			nsPositions[i] = new PositionPileup(60);
 		}
 
 		// initialize consensii
@@ -562,7 +563,7 @@ public class DuplicateReadCluster
 	 * @return
 	 * @throws IOException
 	 */
-	public String consensusSequenceInfo(BufferedWriter altAlleleWriter,
+	public String collapseMe(BufferedWriter altAlleleWriter,
 			boolean positiveStrand) throws IOException
 	{
 
@@ -592,7 +593,7 @@ public class DuplicateReadCluster
 			nsConsensus[i] = nsPositions[i].getMaxCountBase();
 		}
 
-		// build cluster consensus sequence.
+		// build family consensus sequence.
 
 		for (int i = 0; i < psPositions.length; i++)
 		{
@@ -609,13 +610,8 @@ public class DuplicateReadCluster
 				genotype = new Byte[] { psPositions[i].getRefBase() };
 			}
 
-			// get a random permutation of genotype indexes
-			int[] indexes = getIndexPermutation(genotype.length);
-
-			finalizeStrandConsensus(psConsensus, psPositions, i, genotype,
-					indexes);
-			finalizeStrandConsensus(nsConsensus, nsPositions, i, genotype,
-					indexes);
+			finalizeStrandConsensus(psConsensus, psPositions, i, genotype);
+			finalizeStrandConsensus(nsConsensus, nsPositions, i, genotype);
 
 			// if same consensii, no problem (including N i.e. -1 i.e. no
 			// coverage)
@@ -623,19 +619,43 @@ public class DuplicateReadCluster
 			{
 				consensus[i] = psConsensus[i];
 			}
-			else if (psConsensus[i] == -1
-					&& (!isDuplex() || !isAlt(nsConsensus[i], genotype)))
+			else if (psConsensus[i] == -1)
 			{
-				// if only one strand has coverage, accept that as consensus
-				// base if it is genotype
-				consensus[i] = nsConsensus[i];
+				if (isDuplex() && isAlt(nsConsensus[i], genotype))
+				{
+					// skip
+					// duplex alt must be supported on both strands
+				}
+				else if (isNSSimplex() && !isPositionNSSimplex(i))
+				{
+					// skip
+					// simplex family must also be simplex at the current
+					// position to accept consensus
+				}
+				else
+				{
+					// accept
+					consensus[i] = nsConsensus[i];
+				}
 			}
-			else if (nsConsensus[i] == -1
-					&& (!isDuplex() || !isAlt(psConsensus[i], genotype)))
+			else if (nsConsensus[i] == -1)
 			{
-				// if only one strand has coverage, accept that as consensus
-				// base if it is genotype
-				consensus[i] = psConsensus[i];
+				if (isDuplex() && isAlt(psConsensus[i], genotype))
+				{
+					// skip
+					// duplex alt must be supported on both strands
+				}
+				else if (isPSSimplex() && !isPositionPSSimplex(i))
+				{
+					// skip
+					// simplex family must also be simplex at the current
+					// position to accept consensus
+				}
+				else
+				{
+					// accept
+					consensus[i] = psConsensus[i];
+				}
 			}
 			else
 			{
@@ -671,9 +691,11 @@ public class DuplicateReadCluster
 				// consensus[i] = genotype[indexes[0]];
 				// }
 
+				// could not assign genotype so far, make it N
 				if (j == genotype.length)
 				{
-					consensus[i] = genotype[0];
+					// consensus[i] = genotype[0];
+					consensus[i] = -1;
 				}
 
 			}
@@ -886,14 +908,700 @@ public class DuplicateReadCluster
 			Util.reverse(qualities);
 		}
 
-		StringBuilder info = new StringBuilder();
+		StringBuilder collapsedSequenceInfo = new StringBuilder();
 
-		info.append(contig).append("\t").append(startPosition).append("\t")
-				.append(UMI).append("\t").append(psReadCount).append("\t")
-				.append(nsReadCount).append("\t").append(getMatePosition())
-				.append("\t").append(sequence).append("\t").append(qualities);
+		collapsedSequenceInfo.append(contig).append("\t").append(startPosition)
+				.append("\t").append(UMI).append("\t").append(psReadCount)
+				.append("\t").append(nsReadCount).append("\t")
+				.append(getMatePosition()).append("\t").append(sequence)
+				.append("\t").append(qualities);
 
-		return info.toString();
+		return collapsedSequenceInfo.toString();
+	}
+
+	/**
+	 * build consensus sequence from the pileup. This involves building
+	 * consensus sequences per strand first and then building the final cluster
+	 * consensus sequence.
+	 * 
+	 * @param positiveStrand
+	 *            does the consensus read map on the positive strand or negative
+	 *            strand?
+	 * @return
+	 * @throws IOException
+	 */
+	/**
+	 * @param positiveStrand
+	 * @return
+	 * @throws IOException
+	 */
+	public String collapseMike(BufferedWriter altAlleleWriter,
+			boolean positiveStrand) throws IOException
+	{
+
+		// TODO This method will undergo revision as we determine how exactly we
+		// want to build the consensus sequence. There are many parameters to
+		// play with.
+		///////////////////
+
+		// clear the consensii arrays and StringBuilder
+		for (int i = 0; i < psConsensus.length; i++)
+		{
+			psConsensus[i] = -1;
+			psConsensusQuals[i] = 0;
+			nsConsensusQuals[i] = 0;
+		}
+
+		System.arraycopy(psConsensus, 0, nsConsensus, 0, psConsensus.length);
+		System.arraycopy(psConsensus, 0, consensus, 0, psConsensus.length);
+		consensusSequenceBuilder.setLength(0);
+		consensusQualityBuilder.setLength(0);
+
+		// compute per strand consensus sequence. Right now, just choosing the
+		// base with highest count at each position.
+		for (int i = 0; i < psPositions.length; i++)
+		{
+			psConsensus[i] = psPositions[i].getMaxCountBase();
+			nsConsensus[i] = nsPositions[i].getMaxCountBase();
+		}
+
+		// build family consensus sequence.
+
+		for (int i = 0; i < psPositions.length; i++)
+		{
+			// find this person's genotype. If not available, use ref base
+			Byte[] genotype = null;
+			Map<Integer, Byte[]> chrMap = genotypes.get(contig);
+			if (chrMap != null)
+			{
+				genotype = chrMap.get(startPosition + i);
+			}
+
+			if (genotype == null || genotype.length == 0)
+			{
+				genotype = new Byte[] { psPositions[i].getRefBase() };
+			}
+
+			finalizeStrandConsensusMike(psConsensus, psPositions, i, genotype);
+			finalizeStrandConsensusMike(nsConsensus, nsPositions, i, genotype);
+
+			// if same consensii, no problem (including N i.e. -1 i.e. no
+			// coverage)
+			if (psConsensus[i] == nsConsensus[i])
+			{
+				consensus[i] = psConsensus[i];
+			}
+			else if (psConsensus[i] == -1)
+			{
+				if (isDuplex())
+				{
+					consensus[i] = -1;
+				}
+				else if (isNSSimplex() && !isPositionNSSimplex(i))
+				{
+					consensus[i] = -1;
+				}
+				else
+				{
+					// accept
+					consensus[i] = nsConsensus[i];
+				}
+			}
+			else if (nsConsensus[i] == -1)
+			{
+				if (isDuplex())
+				{
+					consensus[i] = -1;
+				}
+				else if (isPSSimplex() && !isPositionPSSimplex(i))
+				{
+					consensus[i] = -1;
+				}
+				else
+				{
+					// accept
+					consensus[i] = psConsensus[i];
+				}
+			}
+			else
+			{
+				// positive and negative strands both have non-N consensii but
+				// they don't match
+				consensus[i] = -1;
+			}
+
+			// compute base quality
+			byte b = consensus[i];
+			if (b == -1)
+			{
+				psConsensusQuals[i] = nsConsensusQuals[i] = baseQualityRange[0];
+			}
+			else
+			{
+				psConsensusQuals[i] = psPositions[i].getConsensusQuality(b);
+				nsConsensusQuals[i] = nsPositions[i].getConsensusQuality(b);
+			}
+
+			// you have the consensus and quality here. If it is non-genotype,
+			// write the alt allele info
+			if (isAlt(consensus[i], genotype))
+			{
+				writeAltAlleleInfo(i, genotype, altAlleleWriter);
+			}
+		}
+
+		// build the consensus sequence and quality
+		for (int i = 0; i < consensus.length; i++)
+		{
+			byte b = consensus[i];
+			int quality;
+			if (b == -1)
+			{
+				b = 'N';
+				quality = baseQualityRange[0];
+			}
+			else
+			{
+				quality = psConsensusQuals[i] + nsConsensusQuals[i];
+
+				// cap at the range boundaries
+				if (quality < baseQualityRange[0])
+				{
+					quality = baseQualityRange[0];
+				}
+				else if (quality > baseQualityRange[1])
+				{
+					quality = baseQualityRange[1];
+				}
+			}
+
+			consensusSequenceBuilder.append((char) b);
+			// write printable ascii base quality value
+			consensusQualityBuilder.append((char) (quality + 33));
+		}
+
+		// Include insertions
+		if (isDuplex())
+		{
+			for (GenotypeID genotypeID : psSpecialGenotypes.keySet())
+			{
+				if (genotypeID.type != GenotypeEventType.INSERTION)
+				{
+					continue;
+				}
+
+				Genotype negative = nsSpecialGenotypes.get(genotypeID);
+
+				// must be present on both strands, must have at least
+				// minConsensusPercent%
+				// support on each strand
+				// using 50% instead of minConsensusPercent% for the time being
+				if (negative == null
+						|| negative.totalSupportingCoverage < (nsReadCount * 50)
+								/ 100
+						|| psSpecialGenotypes.get(
+								genotypeID).totalSupportingCoverage < (psReadCount
+										* 50) / 100)
+				{
+					continue;
+				}
+
+				// insert the insertion
+				int index = genotypeID.position - startPosition + 1;
+				char[] bases = new char[genotypeID.alt.length - 1];
+				char[] quals = getInsertionConsensusQuals(genotypeID);
+				// get the insertion bases, without the ref base
+				for (int i = 0; i < bases.length; i++)
+				{
+					bases[i] = (char) genotypeID.alt[i + 1];
+				}
+
+				consensusSequenceBuilder.insert(index, bases);
+				consensusQualityBuilder.insert(index, quals);
+			}
+		}
+		else
+		{
+			// the family is simplex
+
+			Map<GenotypeID, Genotype> specialGenotypes = null;
+			int readCount = -1;
+
+			if (psReadCount > 0)
+			{
+				specialGenotypes = psSpecialGenotypes;
+				readCount = psReadCount;
+			}
+			else
+			{
+				specialGenotypes = nsSpecialGenotypes;
+				readCount = nsReadCount;
+			}
+
+			for (GenotypeID genotypeID : specialGenotypes.keySet())
+			{
+				if (genotypeID.type != GenotypeEventType.INSERTION)
+				{
+					continue;
+				}
+
+				// must have at least minConsensusPercent% support on the strand
+				// using 50% instead of minConsensusPercent% for the time being
+				if (specialGenotypes.get(
+						genotypeID).totalSupportingCoverage < (readCount * 50)
+								/ 100)
+				{
+					continue;
+				}
+
+				// insert the insertion
+				int index = genotypeID.position - startPosition + 1;
+				char[] bases = new char[genotypeID.alt.length - 1];
+				char[] quals = getInsertionConsensusQuals(genotypeID);
+				// get the insertion bases, without the ref base
+				for (int i = 0; i < bases.length; i++)
+				{
+					bases[i] = (char) genotypeID.alt[i + 1];
+				}
+
+				consensusSequenceBuilder.insert(index, bases);
+				consensusQualityBuilder.insert(index, quals);
+			}
+		}
+
+		// trim trailing N's
+		int index = consensusSequenceBuilder.length() - 1;
+		while (index - basesToTrim > 0)
+		{
+			if (consensusSequenceBuilder.charAt(index) != 'N'
+					&& consensusSequenceBuilder
+							.charAt(index - basesToTrim) != 'N')
+			{
+				break;
+			}
+
+			index--;
+		}
+
+		// the consensus is all N's
+		if (index - basesToTrim == 0)
+		{
+			return null;
+		}
+
+		consensusSequenceBuilder.setLength(index + 1);
+		consensusQualityBuilder.setLength(index + 1);
+
+		// trim the leading and trailing n bases to avoid non-genomic bases
+		if (consensusSequenceBuilder.length() < 2 * basesToTrim)
+		{
+			return null;
+		}
+
+		consensusSequenceBuilder.delete(0, basesToTrim);
+		consensusQualityBuilder.delete(0, basesToTrim);
+		int l = consensusSequenceBuilder.length();
+		consensusSequenceBuilder.delete(l - basesToTrim, l);
+		consensusQualityBuilder.delete(l - basesToTrim, l);
+
+		// remove deletion bases
+		l = consensusSequenceBuilder.length();
+		StringBuilder seq = new StringBuilder(consensusQualityBuilder.length());
+		StringBuilder qual = new StringBuilder(
+				consensusSequenceBuilder.length());
+		for (int i = 0; i < l; i++)
+		{
+			char c = consensusSequenceBuilder.charAt(i);
+			if (c == 'D')
+			{
+				continue;
+			}
+
+			seq.append(c);
+			qual.append(consensusQualityBuilder.charAt(i));
+		}
+
+		char[] sequence = seq.toString().toCharArray();
+		char[] qualities = qual.toString().toCharArray();
+
+		// if all bases were D.
+		// TODO see if there is a better way to write this method.
+		if (sequence.length == 0)
+		{
+			return null;
+		}
+
+		// reverse the strand if necessary
+		if (!positiveStrand)
+		{
+			Util.reverseComplement(sequence);
+			Util.reverse(qualities);
+		}
+
+		StringBuilder collapsedSequenceInfo = new StringBuilder();
+
+		collapsedSequenceInfo.append(contig).append("\t").append(startPosition)
+				.append("\t").append(UMI).append("\t").append(psReadCount)
+				.append("\t").append(nsReadCount).append("\t")
+				.append(getMatePosition()).append("\t").append(sequence)
+				.append("\t").append(qualities);
+
+		return collapsedSequenceInfo.toString();
+	}
+
+	/**
+	 * build consensus sequence from the pileup. This involves building
+	 * consensus sequences per strand first and then building the final cluster
+	 * consensus sequence.
+	 * 
+	 * @param positiveStrand
+	 *            does the consensus read map on the positive strand or negative
+	 *            strand?
+	 * @return
+	 * @throws IOException
+	 */
+	/**
+	 * @param positiveStrand
+	 * @return
+	 * @throws IOException
+	 */
+	public String collapseEP(BufferedWriter altAlleleWriter,
+			boolean positiveStrand) throws IOException
+	{
+
+		// TODO This method will undergo revision as we determine how exactly we
+		// want to build the consensus sequence. There are many parameters to
+		// play with.
+		///////////////////
+
+		// clear the consensii arrays and StringBuilder
+		for (int i = 0; i < psConsensus.length; i++)
+		{
+			psConsensus[i] = -1;
+			psConsensusQuals[i] = 0;
+			nsConsensusQuals[i] = 0;
+		}
+
+		System.arraycopy(psConsensus, 0, nsConsensus, 0, psConsensus.length);
+		System.arraycopy(psConsensus, 0, consensus, 0, psConsensus.length);
+		consensusSequenceBuilder.setLength(0);
+		consensusQualityBuilder.setLength(0);
+
+		// if (startPosition >= 11184480)
+		// {
+		// int a = 5;
+		// }
+
+		// compute per strand consensus sequence
+		for (int i = 0; i < psPositions.length; i++)
+		{
+			psConsensus[i] = psPositions[i].getConsensus();
+			nsConsensus[i] = nsPositions[i].getConsensus();
+		}
+
+		// build family consensus sequence.
+
+		for (int i = 0; i < psPositions.length; i++)
+		{
+			// find this person's genotype. If not available, use ref base
+			Byte[] genotype = null;
+			Map<Integer, Byte[]> chrMap = genotypes.get(contig);
+			if (chrMap != null)
+			{
+				genotype = chrMap.get(startPosition + i);
+			}
+
+			if (genotype == null || genotype.length == 0)
+			{
+				genotype = new Byte[] { psPositions[i].getRefBase() };
+			}
+
+			finalizeStrandConsensusEP(psConsensus, psPositions, i, genotype);
+			finalizeStrandConsensusEP(nsConsensus, nsPositions, i, genotype);
+
+			// if same consensii, no problem (including N i.e. -1 i.e. no
+			// coverage)
+			if (psConsensus[i] == nsConsensus[i])
+			{
+				consensus[i] = psConsensus[i];
+			}
+			else if (psConsensus[i] == -1)
+			{
+				if (isDuplex() && isAlt(nsConsensus[i], genotype))
+				{
+					// skip
+					// duplex alt must be supported on both strands
+				}
+				else if (isNSSimplex() && !isPositionNSSimplex(i))
+				{
+					// skip
+					// simplex family must also be simplex at the current
+					// position to accept consensus
+				}
+				else
+				{
+					// accept
+					consensus[i] = nsConsensus[i];
+				}
+			}
+			else if (nsConsensus[i] == -1)
+			{
+				if (isDuplex() && isAlt(psConsensus[i], genotype))
+				{
+					// skip
+					// duplex alt must be supported on both strands
+				}
+				else if (isPSSimplex() && !isPositionPSSimplex(i))
+				{
+					// skip
+					// simplex family must also be simplex at the current
+					// position to accept consensus
+				}
+				else
+				{
+					// accept
+					consensus[i] = psConsensus[i];
+				}
+			}
+			else
+			{
+				// in case the two strands have different consensus bases, fall
+				// back on genotype, if one of them is genotype
+				int j;
+				for (j = 0; j < genotype.length; j++)
+				{
+					byte g = genotype[j];
+					if (psConsensus[i] == g || nsConsensus[i] == g)
+					{
+						consensus[i] = g;
+						break;
+					}
+				}
+
+				// could not assign genotype so far, make it N
+				if (j == genotype.length)
+				{
+					consensus[i] = -1;
+				}
+			}
+
+			// compute base quality
+			byte b = consensus[i];
+			if (b == -1)
+			{
+				psConsensusQuals[i] = nsConsensusQuals[i] = baseQualityRange[0];
+			}
+			else
+			{
+				psConsensusQuals[i] = psPositions[i].getConsensusQuality(b);
+				nsConsensusQuals[i] = nsPositions[i].getConsensusQuality(b);
+			}
+
+			// you have the consensus and quality here. If it is non-genotype,
+			// write the alt allele info
+			if (isAlt(consensus[i], genotype))
+			{
+				writeAltAlleleInfo(i, genotype, altAlleleWriter);
+			}
+		}
+
+		// build the consensus sequence and quality
+		for (int i = 0; i < consensus.length; i++)
+		{
+			byte b = consensus[i];
+			int quality;
+			if (b == -1)
+			{
+				b = 'N';
+				quality = baseQualityRange[0];
+			}
+			else
+			{
+				quality = psConsensusQuals[i] + nsConsensusQuals[i];
+
+				// cap at the range boundaries
+				if (quality < baseQualityRange[0])
+				{
+					quality = baseQualityRange[0];
+				}
+				else if (quality > baseQualityRange[1])
+				{
+					quality = baseQualityRange[1];
+				}
+			}
+
+			consensusSequenceBuilder.append((char) b);
+			// write printable ascii base quality value
+			consensusQualityBuilder.append((char) (quality + 33));
+		}
+
+		// Include insertions
+		if (isDuplex())
+		{
+			for (GenotypeID genotypeID : psSpecialGenotypes.keySet())
+			{
+				if (genotypeID.type != GenotypeEventType.INSERTION)
+				{
+					continue;
+				}
+
+				Genotype negative = nsSpecialGenotypes.get(genotypeID);
+
+				// must be present on both strands, must have at least
+				// minConsensusPercent%
+				// support on each strand
+				// using 50% instead of minConsensusPercent% for the time being
+				if (negative == null
+						|| negative.totalSupportingCoverage < (nsReadCount * 50)
+								/ 100
+						|| psSpecialGenotypes.get(
+								genotypeID).totalSupportingCoverage < (psReadCount
+										* 50) / 100)
+				{
+					continue;
+				}
+
+				// insert the insertion
+				int index = genotypeID.position - startPosition + 1;
+				char[] bases = new char[genotypeID.alt.length - 1];
+				char[] quals = getInsertionConsensusQuals(genotypeID);
+				// get the insertion bases, without the ref base
+				for (int i = 0; i < bases.length; i++)
+				{
+					bases[i] = (char) genotypeID.alt[i + 1];
+				}
+
+				consensusSequenceBuilder.insert(index, bases);
+				consensusQualityBuilder.insert(index, quals);
+			}
+		}
+		else
+		{
+			// the family is simplex
+
+			Map<GenotypeID, Genotype> specialGenotypes = null;
+			int readCount = -1;
+
+			if (psReadCount > 0)
+			{
+				specialGenotypes = psSpecialGenotypes;
+				readCount = psReadCount;
+			}
+			else
+			{
+				specialGenotypes = nsSpecialGenotypes;
+				readCount = nsReadCount;
+			}
+
+			for (GenotypeID genotypeID : specialGenotypes.keySet())
+			{
+				if (genotypeID.type != GenotypeEventType.INSERTION)
+				{
+					continue;
+				}
+
+				// must have at least minConsensusPercent% support on the strand
+				// using 50% instead of minConsensusPercent% for the time being
+				if (specialGenotypes.get(
+						genotypeID).totalSupportingCoverage < (readCount * 50)
+								/ 100)
+				{
+					continue;
+				}
+
+				// insert the insertion
+				int index = genotypeID.position - startPosition + 1;
+				char[] bases = new char[genotypeID.alt.length - 1];
+				char[] quals = getInsertionConsensusQuals(genotypeID);
+				// get the insertion bases, without the ref base
+				for (int i = 0; i < bases.length; i++)
+				{
+					bases[i] = (char) genotypeID.alt[i + 1];
+				}
+
+				consensusSequenceBuilder.insert(index, bases);
+				consensusQualityBuilder.insert(index, quals);
+			}
+		}
+
+		// trim trailing N's
+		int index = consensusSequenceBuilder.length() - 1;
+		while (index - basesToTrim > 0)
+		{
+			if (consensusSequenceBuilder.charAt(index) != 'N'
+					&& consensusSequenceBuilder
+							.charAt(index - basesToTrim) != 'N')
+			{
+				break;
+			}
+
+			index--;
+		}
+
+		// the consensus is all N's
+		if (index - basesToTrim == 0)
+		{
+			return null;
+		}
+
+		consensusSequenceBuilder.setLength(index + 1);
+		consensusQualityBuilder.setLength(index + 1);
+
+		// trim the leading and trailing n bases to avoid non-genomic bases
+		if (consensusSequenceBuilder.length() < 2 * basesToTrim)
+		{
+			return null;
+		}
+
+		consensusSequenceBuilder.delete(0, basesToTrim);
+		consensusQualityBuilder.delete(0, basesToTrim);
+		int l = consensusSequenceBuilder.length();
+		consensusSequenceBuilder.delete(l - basesToTrim, l);
+		consensusQualityBuilder.delete(l - basesToTrim, l);
+
+		// remove deletion bases
+		l = consensusSequenceBuilder.length();
+		StringBuilder seq = new StringBuilder(consensusQualityBuilder.length());
+		StringBuilder qual = new StringBuilder(
+				consensusSequenceBuilder.length());
+		for (int i = 0; i < l; i++)
+		{
+			char c = consensusSequenceBuilder.charAt(i);
+			if (c == 'D')
+			{
+				continue;
+			}
+
+			seq.append(c);
+			qual.append(consensusQualityBuilder.charAt(i));
+		}
+
+		char[] sequence = seq.toString().toCharArray();
+		char[] qualities = qual.toString().toCharArray();
+
+		// if all bases were D.
+		// TODO see if there is a better way to write this method.
+		if (sequence.length == 0)
+		{
+			return null;
+		}
+
+		// reverse the strand if necessary
+		if (!positiveStrand)
+		{
+			Util.reverseComplement(sequence);
+			Util.reverse(qualities);
+		}
+
+		StringBuilder collapsedSequenceInfo = new StringBuilder();
+
+		collapsedSequenceInfo.append(contig).append("\t").append(startPosition)
+				.append("\t").append(UMI).append("\t").append(psReadCount)
+				.append("\t").append(nsReadCount).append("\t")
+				.append(getMatePosition()).append("\t").append(sequence)
+				.append("\t").append(qualities);
+
+		return collapsedSequenceInfo.toString();
 	}
 
 	/**
@@ -933,9 +1641,74 @@ public class DuplicateReadCluster
 
 	}
 
+	/**
+	 * whether the family is duplex
+	 * 
+	 * @return
+	 */
 	private boolean isDuplex()
 	{
 		if (psReadCount > 0 && nsReadCount > 0)
+		{
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * whether the family is simplex with coverage on positive strand
+	 * 
+	 * @return
+	 */
+	private boolean isPSSimplex()
+	{
+		if (psReadCount >= 3)
+		{
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * whether the family is simplex with coverage on negative strand
+	 * 
+	 * @return
+	 */
+	private boolean isNSSimplex()
+	{
+		if (nsReadCount >= 3)
+		{
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * whether the given position is simplex with coverage on positive strand
+	 * 
+	 * @return
+	 */
+	private boolean isPositionPSSimplex(int i)
+	{
+		if (psPositions[i].getCoverage() >= 3)
+		{
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * whether the given position is simplex with coverage on negative strand
+	 * 
+	 * @return
+	 */
+	private boolean isPositionNSSimplex(int i)
+	{
+		if (nsPositions[i].getCoverage() >= 3)
 		{
 			return true;
 		}
@@ -1019,7 +1792,7 @@ public class DuplicateReadCluster
 	 * @param indexes
 	 */
 	private void finalizeStrandConsensus(byte[] consensus,
-			PositionPileup[] pileup, int index, Byte[] genotype, int[] indexes)
+			PositionPileup[] pileup, int index, Byte[] genotype)
 	{
 		if (!isAlt(consensus[index], genotype))
 		{
@@ -1032,10 +1805,76 @@ public class DuplicateReadCluster
 
 		if (consensusPercent + 0.01 < minConsensusPercent)
 		{
-			// fall back on genotype
-			// prefer genotype with highest count
+			// fall back on genotype?
+			// prefer genotype with highest count?
+			// consensus[index] = genotype[0];
+			consensus[index] = -1;
+		}
 
-			consensus[index] = genotype[0];
+	}
+
+	/**
+	 * 
+	 * 
+	 * @param i
+	 * @param genotype
+	 * @param indexes
+	 */
+	private void finalizeStrandConsensusMike(byte[] consensus,
+			PositionPileup[] pileup, int index, Byte[] genotype)
+	{
+		if (consensus[index] == -1)
+		{
+			return;
+		}
+
+		int coverage = pileup[index].getCoverage();
+		double consensusPercent = (pileup[index].getCount(consensus[index])
+				* 100.0d) / coverage;
+
+		if (consensusPercent + 0.01 < minConsensusPercent)
+		{
+			// fall back on genotype?
+			// prefer genotype with highest count?
+			// consensus[index] = genotype[0];
+			consensus[index] = -1;
+		}
+
+	}
+
+	/**
+	 * for alt, check if non-consensus count is below threshold
+	 * 
+	 * @param i
+	 * @param genotype
+	 * @param indexes
+	 */
+	private void finalizeStrandConsensusEP(byte[] strandConsensus,
+			PositionPileup[] pileup, int index, Byte[] genotype)
+	{
+		double threshold = -1;
+		if (isAlt(strandConsensus[index], genotype))
+		{
+			threshold = (minConsensusPercent * 1.0) / 100;
+		}
+		else
+		{
+			// genotype call threshold. Make it a parameter?
+			threshold = 0.8;
+		}
+
+		// TIntArrayList[] bq = pileup[index].getBaseQualities();
+		// double[] LR = pileup[index].getLR();
+		double maxLR = pileup[index].getLR(strandConsensus[index]);
+
+		// if (maxLR > 0.95 && maxLR <= 0.98)
+		// {
+		// int a = 5;
+		// }
+
+		if (maxLR < threshold)
+		{
+			strandConsensus[index] = -1;
 		}
 
 	}

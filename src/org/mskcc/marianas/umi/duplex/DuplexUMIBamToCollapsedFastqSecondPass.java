@@ -102,6 +102,7 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 		int badClusters = 0;
 		int goodClusters = 0;
 		String consensusSequenceInfo = null;
+		
 
 		// go over first pass clusters one by one
 		// find corresponding second pass clusters
@@ -173,7 +174,7 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 						try
 						{
 							consensusSequenceInfo = clusters[i]
-									.consensusSequenceInfo(altAlleleWriter,
+									.collapseEP(altAlleleWriter,
 											false);
 						}
 						catch (Exception e)
