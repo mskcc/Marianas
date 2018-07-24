@@ -17,10 +17,10 @@ public class DuplexUMIBamToCollapsedFastqFirstPassTest
 	public static void main(String[] args)
 	{
 
-		// String UMIProcessedBam =
-		// "/Users/patelj1/workspace/Waltz/bamFiles/test.bam";
+		String UMIProcessedBam = "/Users/patelj1/workspace/Waltz/bamFiles/DH-ntrk001-pl-T30-chr1.bam";
 
-		String UMIProcessedBam = "/Users/patelj1/workspace/Waltz/bamFiles/chr1.bam";
+		// String UMIProcessedBam =
+		// "/Users/patelj1/workspace/Waltz/bamFiles/chr1.bam";
 
 		// String UMIProcessedBam = "/Users/patelj1/workspace/Waltz/bamFiles/"
 		/// + "a.bam";
@@ -44,8 +44,13 @@ public class DuplexUMIBamToCollapsedFastqFirstPassTest
 
 		//////////////////////////////////////////////////////////////////////////
 
+		// String pileupFile =
+		// "/Users/patelj1/workspace/Marianas/pileupFiles/pre-collapsing/"
+		// +
+		// "BL-tdm1-012-pl-T02-10ng-IGO-05500-ES-15_bc403_Pool-05500-ES-Tube3-1_L000_mrg_cl_aln_srt_MD_IR_FX_BR-pileup.txt";
+
 		String pileupFile = "/Users/patelj1/workspace/Marianas/pileupFiles/pre-collapsing/"
-				+ "BL-tdm1-012-pl-T02-10ng-IGO-05500-ES-15_bc403_Pool-05500-ES-Tube3-1_L000_mrg_cl_aln_srt_MD_IR_FX_BR-pileup.txt";
+				+ "DH-ntrk-001-pl-T30-IGO-05500-ET-14_bc412_Pool-05500-ET-Tube3-1_L000_mrg_cl_aln_srt_MD_IR_FX_BR-pileup.txt";
 
 		// String pileupFile =
 		// "/Users/patelj1/workspace/Marianas/pileupFiles/pre-collapsing/"

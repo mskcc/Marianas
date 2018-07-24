@@ -10,9 +10,10 @@ export TMPDIR=/ifs/work/scratch
 
 
 java="/opt/common/CentOS_6/java/jdk1.8.0_31/bin/java"
-referenceFasta=~/resources/impact-GRCh37/Homo_sapiens_assembly19.fasta
+#referenceFasta=~/resources/impact-GRCh37/Homo_sapiens_assembly19.fasta
+referenceFasta=/ifs/work/bergerm1/Innovation/projects/Juber/Wendy-Viral/resources/hg19-mcpyv-ebv-hpv/hg19-mcpyv-ebv-hpv.fasta
 minMappingQuality="1"
-minBaseQuality="30"
+minBaseQuality="20"
 mismatches="1"
 wobble="2"
 minConsensusPercent="90"

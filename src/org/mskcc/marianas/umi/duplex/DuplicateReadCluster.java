@@ -17,7 +17,6 @@ import org.mskcc.juber.genotype.GenotypeID;
 import org.mskcc.juber.util.Util;
 import org.mskcc.marianas.util.StaticResources;
 
-import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.set.hash.TIntHashSet;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
@@ -98,6 +97,8 @@ public class DuplicateReadCluster
 	private int readIndex;
 
 	private Map<String, Integer> matePositions;
+
+	private static boolean firstTime = true;
 
 	public DuplicateReadCluster(int minMappingQuality, int minBaseQuality,
 			int minConsensusPercent)
@@ -566,6 +567,11 @@ public class DuplicateReadCluster
 	public String collapseMe(BufferedWriter altAlleleWriter,
 			boolean positiveStrand) throws IOException
 	{
+		if (firstTime)
+		{
+			firstTime = false;
+			System.out.println("Scheme: Marianas-Original");
+		}
 
 		// TODO This method will undergo revision as we determine how exactly we
 		// want to build the consensus sequence. There are many parameters to
@@ -608,6 +614,12 @@ public class DuplicateReadCluster
 			if (genotype == null || genotype.length == 0)
 			{
 				genotype = new Byte[] { psPositions[i].getRefBase() };
+			}
+
+			// debug
+			if (startPosition == 404615 && UMI.equals("CGT+GGG") && i == 49)
+			{
+				int a = 5;
 			}
 
 			finalizeStrandConsensus(psConsensus, psPositions, i, genotype);
@@ -938,6 +950,11 @@ public class DuplicateReadCluster
 	public String collapseMike(BufferedWriter altAlleleWriter,
 			boolean positiveStrand) throws IOException
 	{
+		if (firstTime)
+		{
+			firstTime = false;
+			System.out.println("Scheme: Marianas-Mike");
+		}
 
 		// TODO This method will undergo revision as we determine how exactly we
 		// want to build the consensus sequence. There are many parameters to
@@ -1268,6 +1285,11 @@ public class DuplicateReadCluster
 	public String collapseEP(BufferedWriter altAlleleWriter,
 			boolean positiveStrand) throws IOException
 	{
+		if (firstTime)
+		{
+			firstTime = false;
+			System.out.println("Scheme: Marianas-EP");
+		}
 
 		// TODO This method will undergo revision as we determine how exactly we
 		// want to build the consensus sequence. There are many parameters to
@@ -1882,7 +1904,25 @@ public class DuplicateReadCluster
 	private void writeAltAlleleInfo(int i, Byte[] genotype,
 			BufferedWriter altAlleleWriter) throws IOException
 	{
-		// chr, start, UMI, altposition, genotype, consensus, pscount,
+		String family = null;
+		if (isDuplex())
+		{
+			family = "Duplex";
+		}
+		else if (isPSSimplex())
+		{
+			family = "PSSimplex";
+		}
+		else if (isNSSimplex())
+		{
+			family = "NSSimplex";
+		}
+		else
+		{
+			family = "Unfiltered";
+		}
+
+		// chr, start, UMI, altposition, offset, genotype, consensus, pscount,
 		// altpscount, psquality, nscount, altnscount, nsquality
 		altAlleleWriter.write(contig + "\t");
 		altAlleleWriter.write(startPosition + "\t");
@@ -1901,7 +1941,8 @@ public class DuplicateReadCluster
 		altAlleleWriter.write(psConsensusQuals[i] + "\t");
 		altAlleleWriter.write(nsPositions[i].getCoverage() + "\t");
 		altAlleleWriter.write(nsPositions[i].getCount(consensus[i]) + "\t");
-		altAlleleWriter.write(nsConsensusQuals[i] + "\n");
+		altAlleleWriter.write(nsConsensusQuals[i] + "\t");
+		altAlleleWriter.write(family + "\n");
 
 	}
 

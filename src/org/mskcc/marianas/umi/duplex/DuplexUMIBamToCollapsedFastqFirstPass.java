@@ -57,7 +57,8 @@ public class DuplexUMIBamToCollapsedFastqFirstPass
 		File altAlleleFile = new File(outputFolder,
 				"first-pass-alt-alleles.txt");
 
-		System.out.println("Marianas Loop UMI First Pass");
+		System.out.println("Marianas " + StaticResources.version);
+		System.out.println("First Pass");
 		System.out.println("Processing " + bamFile.getName());
 
 		firstPass(bamFile, minMappingQuality, minBaseQuality, UMIMismatches,
@@ -129,8 +130,8 @@ public class DuplexUMIBamToCollapsedFastqFirstPass
 
 			try
 			{
-				consensusSequenceInfo = cluster
-						.collapseEP(altAlleleWriter, true);
+				consensusSequenceInfo = cluster.collapseMe(altAlleleWriter,
+						true);
 			}
 			catch (Exception e)
 			{
