@@ -7,8 +7,8 @@
 export TMPDIR=/ifs/work/scratch
 
 workingDir=`pwd`
-referenceFasta=/ifs/depot/resources/dmp/data/pubdata/hg-fasta/VERSIONS/hg19/Homo_sapiens_assembly19.fasta
-#referenceFasta=/ifs/work/bergerm1/Innovation/projects/Juber/Wendy-Viral/resources/hg19-mcpyv-ebv-hpv/hg19-mcpyv-ebv-hpv.fasta
+# referenceFasta=/ifs/depot/resources/dmp/data/pubdata/hg-fasta/VERSIONS/hg19/Homo_sapiens_assembly19.fasta
+referenceFasta=/ifs/work/bergerm1/Innovation/projects/Juber/Wendy-Viral/resources/hg19-mcpyv-ebv-hpv/hg19-mcpyv-ebv-hpv.fasta
 R1Fastq=$1
 R2Fastq=${R1Fastq/_R1_/_R2_}
 R1FastqBasename=`basename $R1Fastq`
