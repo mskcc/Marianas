@@ -32,8 +32,8 @@ public class SeparateBams
 	public static void main(String[] args) throws IOException
 	{
 		File collapsedBam = new File(args[0]);
-		File simplexDuplexBam = new File(
-				collapsedBam.getName().replace(".bam", "-simplex-duplex.bam"));
+		File simplexBam = new File(
+				collapsedBam.getName().replace(".bam", "-simplex.bam"));
 		File duplexBam = new File(
 				collapsedBam.getName().replace(".bam", "-duplex.bam"));
 
@@ -42,9 +42,9 @@ public class SeparateBams
 		SAMFileHeader header = reader.getFileHeader();
 		SAMRecordIterator iterator = reader.iterator();
 
-		SAMFileWriter simplexDuplexWriter = new SAMFileWriterFactory()
+		SAMFileWriter simplexWriter = new SAMFileWriterFactory()
 				.setCreateIndex(true)
-				.makeBAMWriter(header, true, simplexDuplexBam);
+				.makeBAMWriter(header, true, simplexBam);
 		SAMFileWriter duplexWriter = new SAMFileWriterFactory()
 				.setCreateIndex(true).makeBAMWriter(header, true, duplexBam);
 
@@ -61,17 +61,16 @@ public class SeparateBams
 			// duplex
 			if (ps1 >= 1 && ns1 >= 1 && ps2 >= 1 && ns2 >= 1)
 			{
-				simplexDuplexWriter.addAlignment(record);
 				duplexWriter.addAlignment(record);
 			}
 			else if (ps1 + ns1 >= 3 && ps2 + ns2 >= 3)
 			{
 				// simplex
-				simplexDuplexWriter.addAlignment(record);
+				simplexWriter.addAlignment(record);
 			}
 		}
 
-		simplexDuplexWriter.close();
+		simplexWriter.close();
 		duplexWriter.close();
 		iterator.close();
 		reader.close();
