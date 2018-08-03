@@ -12,6 +12,7 @@ export TMPDIR=/ifs/work/scratch
 java="/opt/common/CentOS_6/java/jdk1.8.0_31/bin/java"
 #referenceFasta=~/resources/impact-GRCh37/Homo_sapiens_assembly19.fasta
 referenceFasta=/ifs/work/bergerm1/Innovation/projects/Juber/Wendy-Viral/resources/hg19-mcpyv-ebv-hpv/hg19-mcpyv-ebv-hpv.fasta
+
 minMappingQuality="1"
 minBaseQuality="20"
 mismatches="1"
@@ -71,10 +72,10 @@ ln -s $wd/collapsed.bam $sample-unfiltered.bam
 ln -s $wd/collapsed.bai $sample-unfiltered.bai
 ln -s $wd/collapsed.bai $sample-unfiltered.bam.bai
 
-cd ../simplex-duplex
-ln -s $wd/collapsed-simplex-duplex.bam $sample-simplex-duplex.bam
-ln -s $wd/collapsed-simplex-duplex.bai $sample-simplex-duplex.bai
-ln -s $wd/collapsed-simplex-duplex.bai $sample-simplex-duplex.bam.bai
+cd ../simplex
+ln -s $wd/collapsed-simplex.bam $sample-simplex.bam
+ln -s $wd/collapsed-simplex.bai $sample-simplex.bai
+ln -s $wd/collapsed-simplex.bai $sample-simplex.bam.bai
 
 cd ../duplex
 ln -s $wd/collapsed-duplex.bam $sample-duplex.bam
