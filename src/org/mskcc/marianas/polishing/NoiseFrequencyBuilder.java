@@ -37,9 +37,9 @@ public class NoiseFrequencyBuilder
 		File directory = new File(args[0]);
 
 		System.out.println(
-				"Collecting position-susbstitution-specific allele fractions");
+				"Collecting position-susbstitution-specific allele fractions and allele counts");
 
-		// populate models
+		// collect af and fragment count frequencies
 		for (File file : directory.listFiles())
 		{
 			if (!file.getName().endsWith("-pileup.txt"))
@@ -59,40 +59,54 @@ public class NoiseFrequencyBuilder
 
 	private static void saveFrequencies() throws IOException
 	{
-		File modelsFile = new File("noise-models.txt");
-		BufferedWriter writer = new BufferedWriter(new FileWriter(modelsFile));
+		File afFile = new File("af-frequencies.txt");
+		File countFile = new File("count-frequencies.txt");
+
+		BufferedWriter afWriter = new BufferedWriter(new FileWriter(afFile));
+		BufferedWriter countWriter = new BufferedWriter(
+				new FileWriter(countFile));
 
 		// DecimalFormat df = new DecimalFormat("#.####");
 
 		for (String chr : noiseFrequencies.keySet())
 		{
-			Map<Integer, PositionNoiseFrequencies> chrModels = noiseFrequencies
+			Map<Integer, PositionNoiseFrequencies> chrFreqs = noiseFrequencies
 					.get(chr);
 
-			for (Integer position : chrModels.keySet())
+			for (Integer position : chrFreqs.keySet())
 			{
-				Map<Substitution, NoiseFrequencyCollector> positionNoiseModels = chrModels
+				Map<Substitution, NoiseFrequencyCollector> positionFreqs = chrFreqs
 						.get(position).getModelsMap();
 
-				for (Substitution substitution : positionNoiseModels.keySet())
+				for (Substitution substitution : positionFreqs.keySet())
 				{
-					NoiseFrequencyCollector noiseModel = positionNoiseModels
+					NoiseFrequencyCollector freqCollector = positionFreqs
 							.get(substitution);
 
-					writer.write(chr + "\t");
-					writer.write(position + "\t");
-					writer.write(noiseModel.getAverageCoverage() + "\t");
-					writer.write(substitution.getRef() + "\t");
-					writer.write(substitution.getAlt() + "\t");
+					// write AF frequencies
+					afWriter.write(chr + "\t");
+					afWriter.write(position + "\t");
+					afWriter.write(freqCollector.getAverageCoverage() + "\t");
+					afWriter.write(substitution.getRef() + "\t");
+					afWriter.write(substitution.getAlt() + "\t");
+					afWriter.write(freqCollector.getAFFrequencyString());
+					afWriter.write("\n");
 
-					writer.write(noiseModel.getFrequencyString());
-
-					writer.write("\n");
+					// write count frquencies
+					countWriter.write(chr + "\t");
+					countWriter.write(position + "\t");
+					countWriter
+							.write(freqCollector.getAverageCoverage() + "\t");
+					countWriter.write(substitution.getRef() + "\t");
+					countWriter.write(substitution.getAlt() + "\t");
+					countWriter.write(freqCollector.getCountFrequencyString());
+					countWriter.write("\n");
 				}
 			}
 		}
 
-		writer.close();
+		afWriter.close();
+		countWriter.close();
 
 	}
 
@@ -106,9 +120,20 @@ public class NoiseFrequencyBuilder
 				.readLine())
 		{
 			words = line.split("\t");
+			// A, C, G, T, D
+			int[] counts = new int[5];
+			int coverage = 0;
+			for (int i = 0; i < 4; i++)
+			{
+				counts[i] = Integer.parseInt(words[i + 4]);
+				coverage += counts[i];
+			}
+
+			// add D count
+			counts[4] = Integer.parseInt(words[9]);
+			coverage += counts[4];
 
 			// apply coverage threshold
-			int coverage = Integer.parseInt(words[3]);
 			if (coverage < minCoverage)
 			{
 				continue;
@@ -136,19 +161,19 @@ public class NoiseFrequencyBuilder
 			}
 
 			// iterate over read counts and update models
-			int indexToSkip = baseToPileupIndex(words[2].charAt(0));
-			for (int i = 4; i < 8; i++)
+			char ref = words[2].charAt(0);
+			int indexToSkip = baseToIndex(ref);
+			for (int i = 0; i < counts.length; i++)
 			{
 				if (i == indexToSkip)
 				{
 					continue;
 				}
 
-				int count = Integer.parseInt(words[i]);
-				char alt = pileupIndexToBase(i);
+				int count = counts[i];
+				char alt = indexToBase(i);
 
-				Substitution substitution = Substitution.get(words[2].charAt(0),
-						alt);
+				Substitution substitution = Substitution.get(ref, alt);
 
 				NoiseFrequencyCollector frequencyCollector = positionNoiseFrequencies
 						.getFrequencyCollectorFor(substitution);
@@ -160,36 +185,40 @@ public class NoiseFrequencyBuilder
 
 	}
 
-	private static char pileupIndexToBase(int i)
+	private static char indexToBase(int i)
 	{
 		switch (i)
 		{
-		case 4:
+		case 0:
 			return 'A';
-		case 5:
+		case 1:
 			return 'C';
-		case 6:
+		case 2:
 			return 'G';
-		case 7:
+		case 3:
 			return 'T';
+		case 4:
+			return 'D';
 		default:
 			return 'X';
 		}
 
 	}
 
-	private static int baseToPileupIndex(char base)
+	private static int baseToIndex(char base)
 	{
 		switch (base)
 		{
 		case 'A':
-			return 4;
+			return 0;
 		case 'C':
-			return 5;
+			return 1;
 		case 'G':
-			return 6;
+			return 2;
 		case 'T':
-			return 7;
+			return 3;
+		case 'D':
+			return 4;
 		default:
 			return -1;
 		}

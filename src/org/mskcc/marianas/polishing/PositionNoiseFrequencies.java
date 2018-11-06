@@ -9,7 +9,7 @@ import java.util.Map;
 /**
  * @author Juber Patel
  * 
- *         collection of noise models at a genomic position, one for each
+ *         collection of noise frequencies at a genomic position, one for each
  *         possible substitution
  *
  */
@@ -22,17 +22,19 @@ public class PositionNoiseFrequencies
 		noiseFrequencies = new LinkedHashMap<Substitution, NoiseFrequencyCollector>();
 	}
 
-	public NoiseFrequencyCollector getFrequencyCollectorFor(Substitution substitution)
+	public NoiseFrequencyCollector getFrequencyCollectorFor(
+			Substitution substitution)
 	{
-		NoiseFrequencyCollector model = noiseFrequencies.get(substitution);
+		NoiseFrequencyCollector freqCollector = noiseFrequencies
+				.get(substitution);
 
-		if (model == null)
+		if (freqCollector == null)
 		{
-			model = new NoiseFrequencyCollector();
-			noiseFrequencies.put(substitution, model);
+			freqCollector = new NoiseFrequencyCollector();
+			noiseFrequencies.put(substitution, freqCollector);
 		}
 
-		return model;
+		return freqCollector;
 	}
 
 	public Map<Substitution, NoiseFrequencyCollector> getModelsMap()

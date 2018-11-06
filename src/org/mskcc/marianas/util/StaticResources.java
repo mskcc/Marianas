@@ -93,14 +93,25 @@ public class StaticResources
 
 		String line = null;
 		String[] words = null;
-		int[] counts = new int[4];
-		// TODO: make this a map and sort by proportion??
+		int[] counts = new int[5];
+
 		Map<Double, Byte> selected = new TreeMap<Double, Byte>();
 		while ((line = reader.readLine()) != null)
 		{
 			words = line.split("\t");
 			int position = Integer.parseInt(words[1]);
-			int total = Integer.parseInt(words[3]);
+
+			counts[0] = Integer.parseInt(words[4]);
+			counts[1] = Integer.parseInt(words[5]);
+			counts[2] = Integer.parseInt(words[6]);
+			counts[3] = Integer.parseInt(words[7]);
+			counts[4] = Integer.parseInt(words[9]);
+
+			int total = 0;
+			for (int i = 0; i < counts.length; i++)
+			{
+				total += counts[i];
+			}
 
 			// minimum coverage required to read genotype for this position
 			if (total < 50)
@@ -108,22 +119,8 @@ public class StaticResources
 				continue;
 			}
 
-			counts[0] = Integer.parseInt(words[4]);
-			counts[1] = Integer.parseInt(words[5]);
-			counts[2] = Integer.parseInt(words[6]);
-			counts[3] = Integer.parseInt(words[7]);
-
 			selected.clear();
 			double proportionThreshold = 0.15;
-
-			for (int i = 0; i < 4; i++)
-			{
-				double proportion = (counts[i] * 1.0) / total;
-				if (proportion >= proportionThreshold)
-				{
-					selected.put(proportion, (byte) 'A');
-				}
-			}
 
 			double proportion = (counts[0] * 1.0) / total;
 			if (proportion >= proportionThreshold)
@@ -148,6 +145,12 @@ public class StaticResources
 			{
 				selected.put(proportion, (byte) 'T');
 			}
+			
+			proportion = (counts[4] * 1.0) / total;
+			if (proportion >= proportionThreshold)
+			{
+				selected.put(proportion, (byte) 'D');
+			}
 
 			// store the genotype in the map
 			Map<Integer, Byte[]> chrMap = genotypes.get(words[0]);
@@ -156,7 +159,7 @@ public class StaticResources
 				chrMap = new HashMap<Integer, Byte[]>();
 				genotypes.put(words[0], chrMap);
 			}
-
+			
 			List<Byte> list = new ArrayList<>(selected.values());
 			Collections.reverse(list);
 			chrMap.put(position, list.toArray(new Byte[0]));

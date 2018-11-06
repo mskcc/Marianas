@@ -32,6 +32,9 @@ import htsjdk.samtools.reference.IndexedFastaSequenceFile;
  */
 public class DuplicateReadCluster
 {
+	private static int debugDels = 0;
+	private static int debugOthers = 0;
+
 	private static final IndexedFastaSequenceFile referenceFasta = StaticResources
 			.getReference();
 
@@ -52,6 +55,7 @@ public class DuplicateReadCluster
 	private final int minMappingQuality;
 	private final int minBaseQuality;
 	private final int minConsensusPercent;
+	private final int deletionMinConsensusPercent;
 
 	private String contig;
 	private int startPosition;
@@ -106,6 +110,7 @@ public class DuplicateReadCluster
 		this.minMappingQuality = minMappingQuality;
 		this.minBaseQuality = minBaseQuality;
 		this.minConsensusPercent = minConsensusPercent;
+		this.deletionMinConsensusPercent = 70;
 		this.psPositions = new PositionPileup[maxReadLength];
 		this.nsPositions = new PositionPileup[maxReadLength];
 
@@ -263,27 +268,10 @@ public class DuplicateReadCluster
 				{
 					if (pileupIndex >= 0 && pileupIndex <= lastPileupIndex)
 					{
-						// TODO test fulcrum
 						if (baseQualities[readIndex] >= minBaseQuality)
 						{
 							positions[pileupIndex].addBase(readBases[readIndex],
 									baseQualities[readIndex]);
-						}
-
-						// if running in debug mode and at the right position
-						if (contigOfInterest != null
-								&& contigOfInterest.equals(record.getContig())
-								&& positionOfInterest == startPosition
-										+ pileupIndex)
-						{
-							StringBuilder line = new StringBuilder(
-									record.getReadName());
-							line.append("\t")
-									.append((char) readBases[readIndex]);
-							line.append("\t").append(contig).append(":")
-									.append(startPosition).append(":")
-									.append(UMI);
-							linesOfInterest.add(line);
 						}
 					}
 
@@ -617,10 +605,11 @@ public class DuplicateReadCluster
 			}
 
 			// debug
-			if (startPosition == 404615 && UMI.equals("CGT+GGG") && i == 49)
-			{
-				int a = 5;
-			}
+			//if (contig.equals("4") && startPosition + i == 54280706
+			//		&& (psConsensus[i] == 'D' && nsConsensus[i] == 'D'))
+			//{
+			//	int a = 5;
+			//}
 
 			finalizeStrandConsensus(psConsensus, psPositions, i, genotype);
 			finalizeStrandConsensus(nsConsensus, nsPositions, i, genotype);
@@ -1309,11 +1298,6 @@ public class DuplicateReadCluster
 		consensusSequenceBuilder.setLength(0);
 		consensusQualityBuilder.setLength(0);
 
-		// if (startPosition >= 11184480)
-		// {
-		// int a = 5;
-		// }
-
 		// compute per strand consensus sequence
 		for (int i = 0; i < psPositions.length; i++)
 		{
@@ -1825,7 +1809,9 @@ public class DuplicateReadCluster
 		double consensusPercent = (pileup[index].getCount(consensus[index])
 				* 100.0d) / coverage;
 
-		if (consensusPercent + 0.01 < minConsensusPercent)
+		int minPercent = consensus[index] == 'D' ? deletionMinConsensusPercent
+				: minConsensusPercent;
+		if (consensusPercent + 0.01 < minPercent)
 		{
 			// fall back on genotype?
 			// prefer genotype with highest count?
@@ -1888,11 +1874,6 @@ public class DuplicateReadCluster
 		// TIntArrayList[] bq = pileup[index].getBaseQualities();
 		// double[] LR = pileup[index].getLR();
 		double maxLR = pileup[index].getLR(strandConsensus[index]);
-
-		// if (maxLR > 0.95 && maxLR <= 0.98)
-		// {
-		// int a = 5;
-		// }
 
 		if (maxLR < threshold)
 		{

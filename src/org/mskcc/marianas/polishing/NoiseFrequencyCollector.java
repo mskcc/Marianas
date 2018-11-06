@@ -16,34 +16,53 @@ import org.apache.commons.math3.stat.Frequency;
 public class NoiseFrequencyCollector
 {
 	private double coverageAccumulator;
-	private Frequency values;
+	private Frequency afFrequencies;
+	private Frequency countFrequencies;
 
 	public NoiseFrequencyCollector()
 	{
-		values = new Frequency();
+		afFrequencies = new Frequency();
+		countFrequencies = new Frequency();
 	}
 
 	public void add(int count, int coverage)
 	{
 		double af = (count * 1.0) / coverage;
-		values.addValue(af);
+		afFrequencies.addValue(af);
+		countFrequencies.addValue(count);
 		coverageAccumulator += coverage;
 	}
 
 	public long getAverageCoverage()
 	{
-		return (long) (coverageAccumulator / values.getSumFreq());
+		return (long) (coverageAccumulator / afFrequencies.getSumFreq());
 	}
 
-	public String getFrequencyString()
+	public String getAFFrequencyString()
 	{
 		StringBuilder builder = new StringBuilder();
 
-		Iterator iterator = values.valuesIterator();
+		Iterator iterator = afFrequencies.valuesIterator();
 		while (iterator.hasNext())
 		{
 			Double value = (Double) iterator.next();
-			long freq = values.getCount(value);
+			long freq = afFrequencies.getCount(value);
+			builder.append("\t").append(value);
+			builder.append("\t").append(freq);
+		}
+
+		return builder.substring(1);
+	}
+	
+	public String getCountFrequencyString()
+	{
+		StringBuilder builder = new StringBuilder();
+
+		Iterator iterator = countFrequencies.valuesIterator();
+		while (iterator.hasNext())
+		{
+			Long value = (Long) iterator.next();
+			long freq = countFrequencies.getCount(value);
 			builder.append("\t").append(value);
 			builder.append("\t").append(freq);
 		}

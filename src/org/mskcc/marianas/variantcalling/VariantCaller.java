@@ -14,6 +14,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.commons.math3.stat.Frequency;
+import org.mskcc.marianas.polishing.NoiseModel;
+import org.mskcc.marianas.polishing.NoiseModelID;
 
 /**
  * @author Juber Patel
@@ -135,7 +137,7 @@ public class VariantCaller
 					}
 					else
 					{
-						p = Double.toString(noiseModel.getPValueFor(af));
+						p = Double.toString(noiseModel.getPValueForOld(af));
 					}
 
 					mutationLine.append(df.format(af)).append("\t");
