@@ -14,8 +14,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.commons.math3.stat.Frequency;
-import org.mskcc.marianas.polishing.NoiseModel;
-import org.mskcc.marianas.polishing.NoiseModelID;
+import org.mskcc.marianas.polishing.Tester;
+import org.mskcc.marianas.polishing.FreqID;
 
 /**
  * @author Juber Patel
@@ -31,7 +31,7 @@ public class VariantCaller
 
 	private static Map<String, String> hotspots = null;
 
-	private static Map<NoiseModelID, NoiseModel> noiseModels = null;
+	private static Map<FreqID, Tester> noiseModels = null;
 
 	/**
 	 * @param args
@@ -124,12 +124,12 @@ public class VariantCaller
 					mutationLine.append((int) tumorCount).append("\t");
 
 					double af = tumorCount / tumorTotal;
-					NoiseModelID id = new NoiseModelID(tumorTokens[0],
+					FreqID id = new FreqID(tumorTokens[0],
 							Integer.parseInt(tumorTokens[1]),
 							tumorTokens[2].charAt(0), altBase);
 
 					String p = null;
-					NoiseModel noiseModel = noiseModels.get(id);
+					Tester noiseModel = noiseModels.get(id);
 					if (noiseModel == null
 							|| noiseModel.getNumObservations() < 10)
 					{
@@ -137,7 +137,7 @@ public class VariantCaller
 					}
 					else
 					{
-						p = Double.toString(noiseModel.getPValueForOld(af));
+						p = Double.toString(noiseModel.tTest(af));
 					}
 
 					mutationLine.append(df.format(af)).append("\t");
@@ -272,7 +272,7 @@ public class VariantCaller
 	private static void loadNoiseFrequencies(File noiseFrequenciesFile)
 			throws IOException
 	{
-		noiseModels = new HashMap<NoiseModelID, NoiseModel>();
+		noiseModels = new HashMap<FreqID, Tester>();
 
 		// in case the pileup file does not exist or is not readable
 		if (!noiseFrequenciesFile.canRead())
@@ -288,7 +288,7 @@ public class VariantCaller
 				.readLine())
 		{
 			String[] tokens = line.split("\t");
-			NoiseModelID id = new NoiseModelID(tokens[0],
+			FreqID id = new FreqID(tokens[0],
 					Integer.parseInt(tokens[1]), tokens[3].charAt(0),
 					tokens[4].charAt(0));
 
@@ -301,7 +301,7 @@ public class VariantCaller
 				frequencyTable.incrementValue(value, freq);
 			}
 
-			NoiseModel noiseModel = new NoiseModel(id, frequencyTable);
+			Tester noiseModel = new Tester(id, frequencyTable);
 
 			noiseModels.put(id, noiseModel);
 		}
