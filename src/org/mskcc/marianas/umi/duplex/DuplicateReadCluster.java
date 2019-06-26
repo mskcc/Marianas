@@ -56,6 +56,7 @@ public class DuplicateReadCluster
 	private final int minBaseQuality;
 	private final int minConsensusPercent;
 	private final int deletionMinConsensusPercent;
+	private final int insertionMinConsensusPercent;
 
 	private String contig;
 	private int startPosition;
@@ -110,15 +111,17 @@ public class DuplicateReadCluster
 		this.minMappingQuality = minMappingQuality;
 		this.minBaseQuality = minBaseQuality;
 		this.minConsensusPercent = minConsensusPercent;
-		this.deletionMinConsensusPercent = 70;
+		this.deletionMinConsensusPercent = 50;
+		this.insertionMinConsensusPercent = 50;
+
 		this.psPositions = new PositionPileup[maxReadLength];
 		this.nsPositions = new PositionPileup[maxReadLength];
 
 		// initialize position pileups
 		for (int i = 0; i < psPositions.length; i++)
 		{
-			psPositions[i] = new PositionPileup(60);
-			nsPositions[i] = new PositionPileup(60);
+			psPositions[i] = new PositionPileup(deletionMinConsensusPercent);
+			nsPositions[i] = new PositionPileup(deletionMinConsensusPercent);
 		}
 
 		// initialize consensii
@@ -338,6 +341,21 @@ public class DuplicateReadCluster
 						GenotypeID genotypeID = new GenotypeID(
 								GenotypeEventType.INSERTION, contig,
 								precedingGenomicPosition, ref, alt);
+
+						// debug
+						/*
+						 * if (contig.equals("8") && startPosition == 55374840
+						 * //870
+						 * && UMI.equals("ATA+TTC"))
+						 * {
+						 * int a = 5;
+						 * String b = UMI;
+						 * System.out.println(cigar + "\t\t"
+						 * + record.getReadString() + "\t"
+						 * + record.getFirstOfPairFlag());
+						 * }
+						 */
+
 						// add
 						addSpecialGenotype(specialGenotypes, insertionQualities,
 								genotypeID, altQuals);
@@ -376,6 +394,21 @@ public class DuplicateReadCluster
 				}
 				else
 				{
+
+					// debug
+					/*
+					 * if (contig.equals("8") && startPosition == 55374840
+					 * //870
+					 * && UMI.equals("ATA+TTC"))
+					 * {
+					 * int a = 5;
+					 * String b = UMI;
+					 * System.out.println(cigar + "\t\t"
+					 * + record.getReadString() + "\t"
+					 * + record.getFirstOfPairFlag());
+					 * }
+					 */
+
 					// add deletions to the pileup, one by one
 					for (int j = 0; j < operatorLength; j++)
 					{
@@ -548,12 +581,14 @@ public class DuplicateReadCluster
 	 * @throws IOException
 	 */
 	/**
+	 * @param insertionsWriter
 	 * @param positiveStrand
 	 * @return
 	 * @throws IOException
 	 */
 	public String collapseMe(BufferedWriter altAlleleWriter,
-			boolean positiveStrand) throws IOException
+			BufferedWriter insertionsWriter, boolean positiveStrand)
+			throws IOException
 	{
 		if (firstTime)
 		{
@@ -605,11 +640,11 @@ public class DuplicateReadCluster
 			}
 
 			// debug
-			//if (contig.equals("4") && startPosition + i == 54280706
-			//		&& (psConsensus[i] == 'D' && nsConsensus[i] == 'D'))
-			//{
-			//	int a = 5;
-			//}
+			// if (contig.equals("4") && startPosition + i == 54280706
+			// && (psConsensus[i] == 'D' && nsConsensus[i] == 'D'))
+			// {
+			// int a = 5;
+			// }
 
 			finalizeStrandConsensus(psConsensus, psPositions, i, genotype);
 			finalizeStrandConsensus(nsConsensus, nsPositions, i, genotype);
@@ -761,18 +796,59 @@ public class DuplicateReadCluster
 					continue;
 				}
 
+				// debug
+				/*
+				 * GenotypeID g = new GenotypeID(GenotypeEventType.INSERTION,
+				 * "8",
+				 * 55374916, new byte[] { 'G' }, new byte[] { 'G', 'T' });
+				 * if (genotypeID.equals(g))
+				 * {
+				 * System.out.println("P-------------------------");
+				 * for (GenotypeID id : psSpecialGenotypes.keySet())
+				 * {
+				 * System.out.println(id);
+				 * }
+				 * System.out.println("N-------------------------");
+				 * for (GenotypeID id : nsSpecialGenotypes.keySet())
+				 * {
+				 * System.out.println(id);
+				 * }
+				 * System.out.println("--------------------------");
+				 * 
+				 * int a = 5;
+				 * 
+				 * }
+				 */
+
+				Genotype positive = psSpecialGenotypes.get(genotypeID);
 				Genotype negative = nsSpecialGenotypes.get(genotypeID);
 
 				// must be present on both strands, must have at least
 				// minConsensusPercent%
 				// support on each strand
 				// using 50% instead of minConsensusPercent% for the time being
-				if (negative == null
-						|| negative.totalSupportingCoverage < (nsReadCount * 50)
-								/ 100
-						|| psSpecialGenotypes.get(
-								genotypeID).totalSupportingCoverage < (psReadCount
-										* 50) / 100)
+				// if (negative == null
+				// || negative.totalSupportingCoverage < (nsReadCount * 50)
+				// / 100
+				// || positive.totalSupportingCoverage < (psReadCount * 50)
+				// / 100)
+				// {
+				// continue;
+				// }
+
+				if (negative == null || negative.totalSupportingCoverage == 0
+						|| positive.totalSupportingCoverage == 0)
+				{
+					continue;
+				}
+
+				double paf = (positive.totalSupportingCoverage * 1.0)
+						/ psReadCount;
+				double naf = (negative.totalSupportingCoverage * 1.0)
+						/ nsReadCount;
+
+				if ((paf * 100) <= insertionMinConsensusPercent
+						&& (naf * 100) <= insertionMinConsensusPercent)
 				{
 					continue;
 				}
@@ -787,6 +863,10 @@ public class DuplicateReadCluster
 					bases[i] = (char) genotypeID.alt[i + 1];
 				}
 
+				writeInsertionInfo(index, genotypeID,
+						positive.totalSupportingCoverage, psReadCount,
+						negative.totalSupportingCoverage, nsReadCount,
+						insertionsWriter);
 				consensusSequenceBuilder.insert(index, bases);
 				consensusQualityBuilder.insert(index, quals);
 			}
@@ -816,11 +896,36 @@ public class DuplicateReadCluster
 					continue;
 				}
 
+				// debug
+				/*
+				 * GenotypeID g = new GenotypeID(GenotypeEventType.INSERTION,
+				 * "8",
+				 * 55374916, new byte[] { 'G' }, new byte[] { 'G', 'T' });
+				 * if (genotypeID.equals(g) && (UMI.equals("AGA+TTC")
+				 * || UMI.equalsIgnoreCase("ATA+TTC")))
+				 * {
+				 * int a = 5;
+				 * 
+				 * }
+				 */
+
 				// must have at least minConsensusPercent% support on the strand
 				// using 50% instead of minConsensusPercent% for the time being
-				if (specialGenotypes.get(
-						genotypeID).totalSupportingCoverage < (readCount * 50)
-								/ 100)
+				Genotype genotype = specialGenotypes.get(genotypeID);
+				// if (genotype.totalSupportingCoverage < (readCount * 50) /
+				// 100)
+				// {
+				// continue;
+				// }
+
+				if (genotype == null || genotype.totalSupportingCoverage == 0)
+				{
+					continue;
+				}
+
+				double af = (genotype.totalSupportingCoverage * 1.0)
+						/ readCount;
+				if ((af * 100) <= insertionMinConsensusPercent)
 				{
 					continue;
 				}
@@ -835,6 +940,20 @@ public class DuplicateReadCluster
 					bases[i] = (char) genotypeID.alt[i + 1];
 				}
 
+				// write the insertion to the insertions file
+				int psSupporting = 0;
+				int nsSupporting = 0;
+				if (psReadCount > 0)
+				{
+					psSupporting = genotype.totalSupportingCoverage;
+				}
+				else
+				{
+					nsSupporting = genotype.totalSupportingCoverage;
+				}
+
+				writeInsertionInfo(index, genotypeID, psSupporting, psReadCount,
+						nsSupporting, nsReadCount, insertionsWriter);
 				consensusSequenceBuilder.insert(index, bases);
 				consensusQualityBuilder.insert(index, quals);
 			}
@@ -1809,9 +1928,17 @@ public class DuplicateReadCluster
 		double consensusPercent = (pileup[index].getCount(consensus[index])
 				* 100.0d) / coverage;
 
-		int minPercent = consensus[index] == 'D' ? deletionMinConsensusPercent
-				: minConsensusPercent;
-		if (consensusPercent + 0.01 < minPercent)
+		int minPercent = minConsensusPercent;
+
+		// use deletion min consensus percent
+		// is this even necessary?? This is taken care of by inclusion of
+		// deletion genotype from pileup.
+		if (consensus[index] == 'D')
+		{
+			minPercent = deletionMinConsensusPercent;
+		}
+
+		if (consensusPercent <= minPercent)
 		{
 			// fall back on genotype?
 			// prefer genotype with highest count?
@@ -1909,7 +2036,7 @@ public class DuplicateReadCluster
 		altAlleleWriter.write(startPosition + "\t");
 		altAlleleWriter.write(UMI + "\t");
 		altAlleleWriter.write((startPosition + i) + "\t");
-		altAlleleWriter.write((i + 1) + "\t");
+		altAlleleWriter.write(i + "\t");
 		for (int k = 0; k < genotype.length; k++)
 		{
 			altAlleleWriter.write((char) genotype[k].byteValue());
@@ -1924,6 +2051,53 @@ public class DuplicateReadCluster
 		altAlleleWriter.write(nsPositions[i].getCount(consensus[i]) + "\t");
 		altAlleleWriter.write(nsConsensusQuals[i] + "\t");
 		altAlleleWriter.write(family + "\n");
+
+	}
+
+	private void writeInsertionInfo(int i, GenotypeID genotypeID,
+			int psSupporting, int psTotal, int nsSupporting, int nsTotal,
+			BufferedWriter insertionsWriter) throws IOException
+	{
+		String family = null;
+		if (isDuplex())
+		{
+			family = "Duplex";
+		}
+		else if (isPSSimplex())
+		{
+			family = "PSSimplex";
+		}
+		else if (isNSSimplex())
+		{
+			family = "NSSimplex";
+		}
+		else
+		{
+			family = "Unfiltered";
+		}
+
+		// chr, start, UMI, altposition, offset, genotype, consensus, pscount,
+		// altpscount, psquality, nscount, altnscount, nsquality
+		insertionsWriter.write(contig + "\t");
+		insertionsWriter.write(startPosition + "\t");
+		insertionsWriter.write(UMI + "\t");
+		insertionsWriter.write((startPosition + i - 1) + "\t");
+		insertionsWriter.write((i - 1) + "\t");
+		insertionsWriter.write((char) genotypeID.ref[0]);
+		insertionsWriter.write("\t");
+		for (int k = 0; k < genotypeID.alt.length; k++)
+		{
+			insertionsWriter.write((char) genotypeID.alt[k]);
+		}
+
+		insertionsWriter.write("\t");
+		insertionsWriter.write(psTotal + "\t");
+		insertionsWriter.write(psSupporting + "\t");
+		insertionsWriter.write("QU" + "\t");
+		insertionsWriter.write(nsTotal + "\t");
+		insertionsWriter.write(nsSupporting + "\t");
+		insertionsWriter.write("QU" + "\t");
+		insertionsWriter.write(family + "\n");
 
 	}
 

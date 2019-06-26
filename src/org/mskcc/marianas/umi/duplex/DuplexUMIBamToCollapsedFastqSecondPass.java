@@ -59,6 +59,8 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 				"first-pass.mate-position-sorted.txt");
 		File altAlleleFile = new File(outputFolder,
 				"second-pass-alt-alleles.txt");
+		File insertionsFile = new File(outputFolder,
+				"second-pass-insertions.txt");
 
 		System.out.println("Marianas " + StaticResources.version);
 		System.out.println("Second Pass");
@@ -67,7 +69,7 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 
 		secondPass(bamFile, minMappingQuality, minBaseQuality, UMIMismatches,
 				wobble, minConsensusPercent, outputFolder, firstPassFile,
-				altAlleleFile);
+				altAlleleFile, insertionsFile);
 
 		long end = System.currentTimeMillis();
 		System.out.println("Finished processing in " + ((end - start) / 1000)
@@ -77,7 +79,7 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 	private static void secondPass(File bamFile, int minMappingQuality,
 			int minBaseQuality, int mismatches, int wobble,
 			int minConsensusPercent, File outputFolder, File firstPassFile,
-			File altAlleleFile) throws Exception
+			File altAlleleFile, File insertionsFile) throws Exception
 	{
 		BufferedReader firstPassReader = new BufferedReader(
 				new FileReader(firstPassFile));
@@ -88,6 +90,8 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 				new FileWriter(new File(outputFolder, "collapsed_R2_.fastq")));
 		BufferedWriter altAlleleWriter = new BufferedWriter(
 				new FileWriter(altAlleleFile));
+		BufferedWriter insertionsWriter = new BufferedWriter(
+				new FileWriter(insertionsFile));
 
 		ClusterCollectionBuilder clusterBuilder = new ClusterCollectionBuilder(
 				bamFile, minMappingQuality, minBaseQuality, mismatches, wobble,
@@ -103,7 +107,6 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 		int badClusters = 0;
 		int goodClusters = 0;
 		String consensusSequenceInfo = null;
-		
 
 		// go over first pass clusters one by one
 		// find corresponding second pass clusters
@@ -115,7 +118,6 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 			words = line.split("\t");
 			wantedContigIndex = Integer.parseInt(words[5]);
 			wantedStartPosition = Integer.parseInt(words[7]);
-
 			totalClusters++;
 
 			// not applying filters at this stage anymore
@@ -174,9 +176,8 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 					{
 						try
 						{
-							consensusSequenceInfo = clusters[i]
-									.collapseMe(altAlleleWriter,
-											false);
+							consensusSequenceInfo = clusters[i].collapseMe(
+									altAlleleWriter, insertionsWriter, false);
 						}
 						catch (Exception e)
 						{
@@ -217,6 +218,7 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 		fastq1.close();
 		fastq2.close();
 		altAlleleWriter.close();
+		insertionsWriter.close();
 
 		clusterBuilder.printNumbers();
 

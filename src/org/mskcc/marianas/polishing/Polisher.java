@@ -52,7 +52,7 @@ public class Polisher
 		System.out.println("Loading Noise Frequencies");
 		loadNoiseFrequencies(afFrequenciesFile, countFrequenciesFile);
 
-		System.out.println("Calling Variants");
+		System.out.println("Polishing Variants");
 		polish(mafFile);
 	}
 

@@ -19,10 +19,11 @@ public class DuplexUMIBamToCollapsedFastqFirstPassTest
 
 		// String UMIProcessedBam =
 		// "/Users/patelj1/workspace/Waltz/bamFiles/hapmap-deletion-site.bam";
-		String UMIProcessedBam = "/Users/patelj1/workspace/Waltz/bamFiles/Hapmap-ctrl-1_S2_001_cl_aln_srt_MD_IR_FX_BR.bam";
 
 		// String UMIProcessedBam =
-		// "/Users/patelj1/workspace/Waltz/bamFiles/chr1.bam";
+		// "/Users/patelj1/workspace/Waltz/bamFiles/hapmap-insertion-site.bam";
+
+		String UMIProcessedBam = "/Users/patelj1/workspace/Waltz/bamFiles/chr1.bam";
 
 		// String UMIProcessedBam = "/Users/patelj1/workspace/Waltz/bamFiles/"
 		/// + "a.bam";
@@ -80,9 +81,9 @@ public class DuplexUMIBamToCollapsedFastqFirstPassTest
 
 		String minMappingQuality = "1";
 		String minBaseQuality = "20";
-		String UMIMismatches = "1";
+		String UMIMismatches = "0";
 		String wobble = "2";
-		String minConsensusPercent = "95";
+		String minConsensusPercent = "90";
 
 		String referenceFasta = "/Users/patelj1/resources/hg19-ncbi/Homo_sapiens_assembly19.fasta";
 

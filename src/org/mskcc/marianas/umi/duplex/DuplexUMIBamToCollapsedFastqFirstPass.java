@@ -56,13 +56,16 @@ public class DuplexUMIBamToCollapsedFastqFirstPass
 		File firstPassFile = new File(outputFolder, "first-pass.txt");
 		File altAlleleFile = new File(outputFolder,
 				"first-pass-alt-alleles.txt");
+		File insertionsFile = new File(outputFolder,
+				"first-pass-insertions.txt");
 
 		System.out.println("Marianas " + StaticResources.version);
 		System.out.println("First Pass");
 		System.out.println("Processing " + bamFile.getName());
 
 		firstPass(bamFile, minMappingQuality, minBaseQuality, UMIMismatches,
-				wobble, minConsensusPercent, firstPassFile, altAlleleFile);
+				wobble, minConsensusPercent, firstPassFile, altAlleleFile,
+				insertionsFile);
 
 		long end = System.currentTimeMillis();
 		System.out.println("Finished processing in " + ((end - start) / 1000)
@@ -71,19 +74,21 @@ public class DuplexUMIBamToCollapsedFastqFirstPass
 
 	private static void firstPass(File bamFile, int minMappingQuality,
 			int minBaseQuality, int mismatches, int wobble,
-			int minConsensusPercent, File firstPassFile, File altAlleleFile)
-			throws Exception
+			int minConsensusPercent, File firstPassFile, File altAlleleFile,
+			File insertionsFile) throws Exception
 	{
 
 		BufferedWriter firstPassWriter = new BufferedWriter(
 				new FileWriter(firstPassFile));
 		BufferedWriter altAlleleWriter = new BufferedWriter(
 				new FileWriter(altAlleleFile));
+		BufferedWriter insertionsWriter = new BufferedWriter(
+				new FileWriter(insertionsFile));
 
 		ClusterCollectionBuilder clusterBuilder = new ClusterCollectionBuilder(
 				bamFile, minMappingQuality, minBaseQuality, mismatches, wobble,
 				minConsensusPercent, true);
-
+		
 		DuplicateReadClusterCollection clusterCollection = null;
 
 		// iterate
@@ -98,20 +103,21 @@ public class DuplexUMIBamToCollapsedFastqFirstPass
 			}
 
 			recordPositiveStrandClusterCollection(clusterCollection,
-					firstPassWriter, altAlleleWriter);
+					firstPassWriter, altAlleleWriter, insertionsWriter);
 		}
 
 		clusterBuilder.close();
 		firstPassWriter.close();
 		altAlleleWriter.close();
+		insertionsWriter.close();
 
 		clusterBuilder.printNumbers();
 	}
 
 	private static void recordPositiveStrandClusterCollection(
 			DuplicateReadClusterCollection clusterCollection,
-			BufferedWriter firstPassWriter, BufferedWriter altAlleleWriter)
-			throws IOException
+			BufferedWriter firstPassWriter, BufferedWriter altAlleleWriter,
+			BufferedWriter insertionsWriter) throws IOException
 	{
 		// TODO write all the needed information !!!
 
@@ -131,7 +137,7 @@ public class DuplexUMIBamToCollapsedFastqFirstPass
 			try
 			{
 				consensusSequenceInfo = cluster.collapseMe(altAlleleWriter,
-						true);
+						insertionsWriter, true);
 			}
 			catch (Exception e)
 			{
@@ -153,5 +159,6 @@ public class DuplexUMIBamToCollapsedFastqFirstPass
 
 		firstPassWriter.flush();
 		altAlleleWriter.flush();
+		insertionsWriter.flush();
 	}
 }

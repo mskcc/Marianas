@@ -100,7 +100,8 @@ public class ClusterCollectionBuilder
 		for (int i = 0; i < currentClusterWindow.length; i++)
 		{
 			currentClusterWindow[i] = new DuplicateReadClusterCollection(
-					clusterPool, minMappingQuality, minBaseQuality, minConsensusPercent);
+					clusterPool, minMappingQuality, minBaseQuality,
+					minConsensusPercent);
 		}
 
 		// initial value to ensure that sliding starts promptly
@@ -473,6 +474,19 @@ public class ClusterCollectionBuilder
 			return true;
 		}
 
+		return false;
+	}
+
+	/**
+	 * Dummy method that always returns false to avoid any merging
+	 * 
+	 * @param cluster1
+	 * @param cluster2
+	 * @return
+	 */
+	private boolean sameClusterDummy(DuplicateReadCluster cluster1,
+			DuplicateReadCluster cluster2)
+	{
 		return false;
 	}
 
