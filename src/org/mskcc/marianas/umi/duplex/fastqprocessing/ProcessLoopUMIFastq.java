@@ -9,7 +9,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
-import java.nio.file.Files;
 import java.util.Map;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
@@ -27,52 +26,36 @@ import org.mskcc.juber.util.Util;
  *         1. remove UMIs and constant region from the beginning of read1 and
  *         read2
  *         2. put the UMI combination in the read name for both read1 and read2
- *         3. create new sample folders and new fastq files
- *         4. copy sample sheets
  *
  */
 public class ProcessLoopUMIFastq
 {
-
 	/**
 	 * 
 	 * @param args
-	 *            read1 fastq, UMI length, constant region, project folder
+	 *            read1 fastq, read2 fastq, UMI length
 	 * @throws IOException
 	 */
 	public static void main(String[] args) throws IOException
 	{
 		File R1FastqFile = new File(args[0]);
-		int UMILength = Integer.parseInt(args[1]);
-		File outputProjectFolder = new File(args[2]);
+		File R2FastqFile = new File(args[1]);
+		int UMILength = Integer.parseInt(args[2]);
 
 		// no args[] beyond this point
 
 		BufferedReader fastq1 = new BufferedReader(new InputStreamReader(
 				new GZIPInputStream(new FileInputStream(R1FastqFile))));
 		BufferedReader fastq2 = new BufferedReader(new InputStreamReader(
-				new GZIPInputStream(new FileInputStream(new File(
-						R1FastqFile.getParentFile(), R1FastqFile.getName()
-								.replace("_R1_", "_R2_"))))));
-		File sampleSheet = new File(R1FastqFile.getParentFile(),
-				"SampleSheet.csv");
+				new GZIPInputStream(new FileInputStream(R2FastqFile))));
 
 		int maxOccurrences = UMILength + 1;
 
-		// make sample folder
-		File sampleFolder = sampleFolder(outputProjectFolder, R1FastqFile);
-		sampleFolder.mkdir();
-
-		// copy samplesheet
-		Files.copy(sampleSheet.toPath(),
-				new File(sampleFolder, "SampleSheet.csv").toPath());
-
 		// process fastq files
-		String sampleName = sampleFolder.getName().substring(7);
-		// make output fastq files
-		File outFile1 = new File(sampleFolder, R1FastqFile.getName());
-		File outFile2 = new File(sampleFolder,
-				R1FastqFile.getName().replace("_R1_", "_R2_"));
+		File outFile1 = new File(
+				R1FastqFile.getName().replace(".fastq", "_umi-clipped.fastq"));
+		File outFile2 = new File(
+				R2FastqFile.getName().replace(".fastq", "_umi-clipped.fastq"));
 
 		BufferedWriter out1 = new BufferedWriter(new OutputStreamWriter(
 				new GZIPOutputStream(new FileOutputStream(outFile1))));
@@ -167,8 +150,7 @@ public class ProcessLoopUMIFastq
 		out2.close();
 
 		// write basic stats
-		BufferedWriter writer = new BufferedWriter(
-				new FileWriter(new File(sampleFolder, "info.txt")));
+		BufferedWriter writer = new BufferedWriter(new FileWriter("info.txt"));
 
 		long readPairsWithUMIs = polyUMICounts[0] + polyUMICounts[1]
 				+ polyUMICounts[2] + polyUMICounts[3] + polyUMICounts[4];
@@ -189,10 +171,8 @@ public class ProcessLoopUMIFastq
 				+ " (" + (polyUMICounts[0] * 1.0 / readPairsWithUMIs) + ")\n");
 
 		writer.close();
-		
 
-		writer = new BufferedWriter(
-				new FileWriter(new File(sampleFolder, "umi-frequencies.txt")));
+		writer = new BufferedWriter(new FileWriter("umi-frequencies.txt"));
 		Map<String, Integer> map = LoopUMIProcessor.UMIFrequencies;
 		for (String key : map.keySet())
 		{
@@ -202,8 +182,8 @@ public class ProcessLoopUMIFastq
 
 		writer.close();
 
-		writer = new BufferedWriter(new FileWriter(
-				new File(sampleFolder, "composite-umi-frequencies.txt")));
+		writer = new BufferedWriter(
+				new FileWriter("composite-umi-frequencies.txt"));
 		map = LoopUMIProcessor.compositeUMIFrequencies;
 		for (String key : map.keySet())
 		{
