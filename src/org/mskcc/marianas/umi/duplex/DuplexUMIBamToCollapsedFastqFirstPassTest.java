@@ -77,7 +77,7 @@ public class DuplexUMIBamToCollapsedFastqFirstPassTest
 		// "/Users/patelj1/workspace/Marianas/collapsed-fastqs/Test/DL-12/";
 		// String outputFolder =
 		// "/Users/patelj1/workspace/Marianas/collapsed-fastqs/G-30/";
-		String outputFolder = "/Users/patelj1/workspace/Marianas/collapsed-fastqs/test/";
+		//String outputFolder = "/Users/patelj1/workspace/Marianas/collapsed-fastqs/test/";
 
 		String minMappingQuality = "1";
 		String minBaseQuality = "20";
@@ -92,7 +92,7 @@ public class DuplexUMIBamToCollapsedFastqFirstPassTest
 			DuplexUMIBamToCollapsedFastqFirstPass.main(new String[] {
 					UMIProcessedBam, pileupFile, minMappingQuality,
 					minBaseQuality, UMIMismatches, wobble, minConsensusPercent,
-					referenceFasta, outputFolder });
+					referenceFasta });
 		}
 		catch (Exception e)
 		{

@@ -27,7 +27,7 @@ import htsjdk.samtools.reference.IndexedFastaSequenceFile;
  */
 public class StaticResources
 {
-	public static final String version = "1.8.0";
+	public static final String version = "1.8.1";
 	private static IndexedFastaSequenceFile referenceFasta;
 	private static FastaSequenceIndex referenceFastaIndex;
 	private static Map<String, Map<Integer, Byte[]>> genotypes;

@@ -33,7 +33,9 @@ public class ProcessLoopUMIFastq
 	/**
 	 * 
 	 * @param args
-	 *            read1 fastq, read2 fastq, UMI length
+	 *            args[0] - read1 fastq
+	 *            args[1] - read2 fastq
+	 *            args[2] - UMI length
 	 * @throws IOException
 	 */
 	public static void main(String[] args) throws IOException

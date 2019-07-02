@@ -24,10 +24,14 @@ public class DuplexUMIBamToCollapsedFastqFirstPass
 {
 	/**
 	 * @param args
-	 *            args[0] - bam file; args[1] - pileup file; args[2] - UMI
-	 *            allowed
-	 *            mismatches; args[3] - UMI allowed wobble; args[4] - reference
-	 *            fasta; args[5] - R1 fastq name; args[6] - output folder
+	 *            args[0] - bam file
+	 *            args[1] - pileup file
+	 *            args[2] - min mapping quality
+	 *            args[3] - min base quality
+	 *            args[4] - UMI allowed mismatches
+	 *            args[5] - UMI allowed wobble
+	 *            args[6] - min consensus percent
+	 *            args[7] - reference fasta
 	 * @throws Exception
 	 */
 	public static void main(String[] args) throws Exception
@@ -47,17 +51,14 @@ public class DuplexUMIBamToCollapsedFastqFirstPass
 		IndexedFastaSequenceFile refFasta = new IndexedFastaSequenceFile(
 				refFastaFile, refFastaIndex);
 		new StaticResources(refFasta, refFastaIndex, pileupFile, null);
-		File outputFolder = new File(args[8]);
 
 		// no args[] after this point
 
 		long start = System.currentTimeMillis();
 
-		File firstPassFile = new File(outputFolder, "first-pass.txt");
-		File altAlleleFile = new File(outputFolder,
-				"first-pass-alt-alleles.txt");
-		File insertionsFile = new File(outputFolder,
-				"first-pass-insertions.txt");
+		File firstPassFile = new File("first-pass.txt");
+		File altAlleleFile = new File("first-pass-alt-alleles.txt");
+		File insertionsFile = new File("first-pass-insertions.txt");
 
 		System.out.println("Marianas " + StaticResources.version);
 		System.out.println("First Pass");
@@ -88,7 +89,7 @@ public class DuplexUMIBamToCollapsedFastqFirstPass
 		ClusterCollectionBuilder clusterBuilder = new ClusterCollectionBuilder(
 				bamFile, minMappingQuality, minBaseQuality, mismatches, wobble,
 				minConsensusPercent, true);
-		
+
 		DuplicateReadClusterCollection clusterCollection = null;
 
 		// iterate

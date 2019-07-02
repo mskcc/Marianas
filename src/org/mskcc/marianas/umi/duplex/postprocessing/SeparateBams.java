@@ -17,8 +17,8 @@ import htsjdk.samtools.SamReaderFactory;
 /**
  * @author Juber Patel
  * 
- *         Subset a collapsed bam into multiple bam files: simplex+duplex bam
- *         and pure duplex bam
+ *         Create simplex-only and duplex-only bams from the collapsed
+ *         unfiltered bam
  *
  */
 public class SeparateBams
@@ -26,7 +26,8 @@ public class SeparateBams
 
 	/**
 	 * @param args
-	 *            path to the collapsed bam
+	 *            args[0] - path to the collapsed bam
+	 * 
 	 * @throws IOException
 	 */
 	public static void main(String[] args) throws IOException
@@ -43,8 +44,7 @@ public class SeparateBams
 		SAMRecordIterator iterator = reader.iterator();
 
 		SAMFileWriter simplexWriter = new SAMFileWriterFactory()
-				.setCreateIndex(true)
-				.makeBAMWriter(header, true, simplexBam);
+				.setCreateIndex(true).makeBAMWriter(header, true, simplexBam);
 		SAMFileWriter duplexWriter = new SAMFileWriterFactory()
 				.setCreateIndex(true).makeBAMWriter(header, true, duplexBam);
 

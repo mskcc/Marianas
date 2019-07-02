@@ -26,10 +26,14 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 {
 	/**
 	 * @param args
-	 *            args[0] - bam file; args[1] - bed file; args[2] - UMI allowed
-	 *            mismatches; args[3] - UMI allowed wobble; args[4] - reference
-	 *            fasta; args[5] - output folder
-	 * 
+	 *            args[0] - bam file
+	 *            args[1] - pileup file
+	 *            args[2] - min mapping quality
+	 *            args[3] - min base quality
+	 *            args[4] - UMI allowed mismatches
+	 *            args[5] - UMI allowed wobble
+	 *            args[6] - min consensus percent
+	 *            args[7] - reference fasta
 	 * @throws Exception
 	 */
 	public static void main(String[] args) throws Exception
@@ -49,18 +53,14 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 		IndexedFastaSequenceFile refFasta = new IndexedFastaSequenceFile(
 				refFastaFile, refFastaIndex);
 		new StaticResources(refFasta, refFastaIndex, pileupFile, null);
-		File outputFolder = new File(args[8]);
 
 		// no args after this point
 
 		long start = System.currentTimeMillis();
 
-		File firstPassFile = new File(outputFolder,
-				"first-pass.mate-position-sorted.txt");
-		File altAlleleFile = new File(outputFolder,
-				"second-pass-alt-alleles.txt");
-		File insertionsFile = new File(outputFolder,
-				"second-pass-insertions.txt");
+		File firstPassFile = new File("first-pass.mate-position-sorted.txt");
+		File altAlleleFile = new File("second-pass-alt-alleles.txt");
+		File insertionsFile = new File("second-pass-insertions.txt");
 
 		System.out.println("Marianas " + StaticResources.version);
 		System.out.println("Second Pass");
@@ -68,8 +68,8 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 				+ " to produce fastqs");
 
 		secondPass(bamFile, minMappingQuality, minBaseQuality, UMIMismatches,
-				wobble, minConsensusPercent, outputFolder, firstPassFile,
-				altAlleleFile, insertionsFile);
+				wobble, minConsensusPercent, firstPassFile, altAlleleFile,
+				insertionsFile);
 
 		long end = System.currentTimeMillis();
 		System.out.println("Finished processing in " + ((end - start) / 1000)
@@ -78,16 +78,16 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 
 	private static void secondPass(File bamFile, int minMappingQuality,
 			int minBaseQuality, int mismatches, int wobble,
-			int minConsensusPercent, File outputFolder, File firstPassFile,
-			File altAlleleFile, File insertionsFile) throws Exception
+			int minConsensusPercent, File firstPassFile, File altAlleleFile,
+			File insertionsFile) throws Exception
 	{
 		BufferedReader firstPassReader = new BufferedReader(
 				new FileReader(firstPassFile));
 
 		BufferedWriter fastq1 = new BufferedWriter(
-				new FileWriter(new File(outputFolder, "collapsed_R1_.fastq")));
+				new FileWriter(new File("collapsed_R1_.fastq")));
 		BufferedWriter fastq2 = new BufferedWriter(
-				new FileWriter(new File(outputFolder, "collapsed_R2_.fastq")));
+				new FileWriter(new File("collapsed_R2_.fastq")));
 		BufferedWriter altAlleleWriter = new BufferedWriter(
 				new FileWriter(altAlleleFile));
 		BufferedWriter insertionsWriter = new BufferedWriter(
