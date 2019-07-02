@@ -24,14 +24,14 @@ Java 1.8 or above is required.
 
 ## Using Marianas
 
-1. UMI clipping
+**1. UMI clipping**
 
 java -server -Xms8g -Xmx8g -cp Marianas.jar org.mskcc.marianas.umi.duplex.fastqprocessing.ProcessLoopUMIFastq read1.fastq.gz read2.fastq.gz umi-length
 
 This will create a pair of _umi-clipped.fastq.gz files in the current working directory
 
 
-2. Collapsing and making consensus reads
+**2. Collapsing and making consensus reads**
 
 
 Collapsing involves 3 sub-steps: First pass that collapses the "left" read cluster of the read pairs, followed by a sort step on the first pass output, followed by second pass that collapses the "right" read cluster of the read pairs.
@@ -44,7 +44,7 @@ sort -S 8G -k 6,6n -k 8,8n first-pass.txt > first-pass.mate-position-sorted.txt
 java -server -Xms8g -Xmx8g -cp Marianas.jar org.mskcc.marianas.umi.duplex.DuplexUMIBamToCollapsedFastqSecondPass bam-file pileup-file minMappingQuality minBaseQuality mismatches wobble minConsensusPercent reference-fasta-file
 
 
-3. Separating simplex and duplex bams from original collapsed bam
+**3. Separating simplex and duplex bams from original collapsed bam**
 
 java -server -Xms8g -Xmx8g -cp Marianas.jar org.mskcc.marianas.umi.duplex.postprocessing.SeparateBams collapsed.bam
 
