@@ -65,6 +65,9 @@ The second pass assumes the presence of first-pass.mate-position-sorted.txt in t
 
 java -server -Xms8g -Xmx8g -cp Marianas.jar org.mskcc.marianas.umi.duplex.postprocessing.SeparateBams collapsed.bam
 
+This will produce collapsed-duplex.bam and collapsed-simplex.bam (based on the input bam file name) in the current working directory.
+
+
 
 
 
