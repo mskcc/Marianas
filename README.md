@@ -56,9 +56,9 @@ sort -S 8G -k 6,6n -k 8,8n first-pass.txt > first-pass.mate-position-sorted.txt
 
 C.
 
-java -server -Xms8g -Xmx8g -cp Marianas.jar org.mskcc.marianas.umi.duplex.DuplexUMIBamToCollapsedFastqSecondPass standard-bam-file pileup-file minMappingQuality minBaseQuality mismatches wobble minConsensusPercent reference-fasta-file
+java -server -Xms8g -Xmx8g -cp Marianas.jar org.mskcc.marianas.umi.duplex.DuplexUMIBamToCollapsedFastqSecondPass standard-bam-file pileup-file minMappingQuality minBaseQuality mismatches wobble minConsensusPercent reference-fasta-file first-pass.mate-position-sorted.txt
 
-The second pass assumes the presence of first-pass.mate-position-sorted.txt in the current working directory and it will produce collapsed_R1_.fastq and collapsed_R2_.fastq files along with some QC files.
+This will produce collapsed_R1_.fastq and collapsed_R2_.fastq files along with some QC files.
 
 
 **3. Separating simplex and duplex bams from original collapsed bam**

@@ -50,13 +50,14 @@ public class DuplexUMIBamToCollapsedFastqSecondPassTest
 		String wobble = "2";
 		String minConsensusPercent = "90";
 		String referenceFasta = "/Users/patelj1/resources/hg19-ncbi/Homo_sapiens_assembly19.fasta";
+		String firstPassFile = "first-pass.mate-position-sorted.txt";
 
 		try
 		{
-			DuplexUMIBamToCollapsedFastqSecondPass
-					.main(new String[] { UMIProcessedBam, pileupFile,
-							minMappingQuality, minBaseQuality, UMIMismatches,
-							wobble, minConsensusPercent, referenceFasta });
+			DuplexUMIBamToCollapsedFastqSecondPass.main(new String[] {
+					UMIProcessedBam, pileupFile, minMappingQuality,
+					minBaseQuality, UMIMismatches, wobble, minConsensusPercent,
+					referenceFasta, firstPassFile });
 
 		}
 		catch (Exception e)

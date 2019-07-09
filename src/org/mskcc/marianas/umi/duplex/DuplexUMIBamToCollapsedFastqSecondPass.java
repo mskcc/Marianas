@@ -34,6 +34,7 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 	 *            args[5] - UMI allowed wobble
 	 *            args[6] - min consensus percent
 	 *            args[7] - reference fasta
+	 *            args[8] - mate-position sorted first pass file
 	 * @throws Exception
 	 */
 	public static void main(String[] args) throws Exception
@@ -54,11 +55,12 @@ public class DuplexUMIBamToCollapsedFastqSecondPass
 				refFastaFile, refFastaIndex);
 		new StaticResources(refFasta, refFastaIndex, pileupFile, null);
 
+		File firstPassFile = new File(args[8]);
+
 		// no args after this point
 
 		long start = System.currentTimeMillis();
 
-		File firstPassFile = new File("first-pass.mate-position-sorted.txt");
 		File altAlleleFile = new File("second-pass-alt-alleles.txt");
 		File insertionsFile = new File("second-pass-insertions.txt");
 
