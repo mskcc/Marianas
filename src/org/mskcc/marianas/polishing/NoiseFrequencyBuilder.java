@@ -9,8 +9,10 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * @author Juber Patel
@@ -110,16 +112,28 @@ public class NoiseFrequencyBuilder
 
 	}
 
-	private static void collectFrequencies(File file) throws IOException
+	private static void collectFrequencies(File pileupFile) throws IOException
 	{
-		BufferedReader reader = new BufferedReader(new FileReader(file));
+		BufferedReader reader = new BufferedReader(new FileReader(pileupFile));
 
 		String[] words = null;
+		Set<String> seenPositions = new HashSet<String>();
 
 		for (String line = reader.readLine(); line != null; line = reader
 				.readLine())
 		{
 			words = line.split("\t");
+
+			String position = words[0] + "\t" + words[1];
+
+			// duplicate position in the same pileup file
+			if (seenPositions.contains(position))
+			{
+				continue;
+			}
+
+			seenPositions.add(position);
+
 			// A, C, G, T, D
 			int[] counts = new int[5];
 			int coverage = 0;
@@ -142,7 +156,7 @@ public class NoiseFrequencyBuilder
 			Map<Integer, PositionNoiseFrequencies> chrFrequencies = noiseFrequencies
 					.get(words[0]);
 
-			// add chrModels if doesn't exist already
+			// add chrFrequencies if doesn't exist already
 			if (chrFrequencies == null)
 			{
 				chrFrequencies = new LinkedHashMap<Integer, PositionNoiseFrequencies>();
@@ -152,7 +166,7 @@ public class NoiseFrequencyBuilder
 			PositionNoiseFrequencies positionNoiseFrequencies = chrFrequencies
 					.get(Integer.parseInt(words[1]));
 
-			// add position noise frequency collectors if doesn't exist already
+			// add position noise frequency collector if doesn't exist already
 			if (positionNoiseFrequencies == null)
 			{
 				positionNoiseFrequencies = new PositionNoiseFrequencies();
