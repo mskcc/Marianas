@@ -85,9 +85,9 @@ These columns are required in the input maf file: Chromosome, Start_Position, Va
 
 The command will create a -polished.maf file that has 3 additional columns at the end:
 
-Polishing_Position_Average_Coverage: Average coverage at the mutation position in the normal set
-Polishing_P_Value: Polishing p-value that can be used to filter out low confidence calls
-Fragment_Count->Samples_Map: A set of key-value pairs for the mutation where key is the alt count and value is the number of normals with that alt count
+Polishing_Position_Average_Coverage: Average coverage at the mutation position in the normal set  
+Polishing_P_Value: Polishing p-value that can be used to filter out low confidence calls  
+Fragment_Count->Samples_Map: A set of key-value pairs for the mutation where key is the alt count and value is the number of normals with that alt count    
 
 Polishing will only be performed for point substitutions and single base deletions. The above fields will contain a "-" for other types of mutations.
 
