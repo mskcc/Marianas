@@ -20,11 +20,14 @@ public class PolisherTest
 	{
 		String mafFile = "/Users/patelj1/workspace/ACCESS/Lowery-Cholangiocarcinoma/genotypes.maf";
 
-		String afFrequenciesFile = "/Users/patelj1/workspace/Marianas/polishing/duplex/frequencies-m1/af-frequencies.txt";
-		String countFrequenciesFile = "/Users/patelj1/workspace/Marianas/polishing/duplex/frequencies-m1/count-frequencies.txt";
+		String afFrequenciesFile = "/Users/patelj1/workspace/Marianas/polishing/novaseq-duplex/af-frequencies.txt";
+		String countFrequenciesFile = "/Users/patelj1/workspace/Marianas/polishing/novaseq-duplex/count-frequencies.txt";
 
-		Polisher.main(new String[] { mafFile, afFrequenciesFile,
-				countFrequenciesFile });
+		String depthColumnName = "SD_t_depth_count_fragment";
+		String altColumnName = "SD_t_alt_count_fragment";
+
+		Polisher.main(new String[] { mafFile, depthColumnName, altColumnName,
+				afFrequenciesFile, countFrequenciesFile });
 
 	}
 

@@ -68,6 +68,32 @@ java -server -Xms8g -Xmx8g -cp Marianas.jar org.mskcc.marianas.umi.duplex.postpr
 This will produce collapsed-duplex.bam and collapsed-simplex.bam (based on the input bam file name) in the current working directory.
 
 
+**4. Polishing**
+
+A. Building frequency tables
+
+java -server -Xms8g -Xmx8g -cp Marianas.jar org.mskcc.marianas.polishing.NoiseFrequencyBuilder pileup-directory
+
+where pileup-directory contains Waltz pileups for the chosen set of normals. This will create 2 files: af-frequencies.txt and count-frequencies.txt. This step is executed only when there is a change in the chosen set of normals.
+
+
+B. Polishing variants
+
+java -server -Xms8g -Xmx8g -cp Marianas.jar org.mskcc.marianas.polishing.Polisher maf-file depth-column-name alt-count-column-name af-frequencies-file count-frequencies-file
+
+These columns are required in the input maf file: Chromosome, Start_Position, Variant_Type, Reference_Allele, Tumor_Seq_Allele2.
+
+The command will create a -polished.maf file that has 3 additional columns at the end:
+
+Polishing_Position_Average_Coverage: Average coverage at the mutation position in the normal set
+Polishing_P_Value: Polishing p-value that can be used to filter out low confidence calls
+Fragment_Count->Samples_Map: A set of key-value pairs for the mutation where key is the alt count and value is the number of normals with that alt count
+
+Polishing will only be performed for point substitutions and single base deletions. The above fields will contain a "-" for other types of mutations.
+
+
+
+
 
 
 

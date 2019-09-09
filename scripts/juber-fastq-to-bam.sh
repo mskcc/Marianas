@@ -7,8 +7,8 @@
 export TMPDIR=/ifs/work/scratch
 
 workingDir=`pwd`
-# referenceFasta=/ifs/depot/resources/dmp/data/pubdata/hg-fasta/VERSIONS/hg19/Homo_sapiens_assembly19.fasta
-referenceFasta=/ifs/work/bergerm1/Innovation/projects/Juber/Wendy-Viral/resources/hg19-mcpyv-ebv-hpv/hg19-mcpyv-ebv-hpv.fasta
+referenceFasta=/ifs/depot/resources/dmp/data/pubdata/hg-fasta/VERSIONS/hg19/Homo_sapiens_assembly19.fasta
+#referenceFasta=/ifs/work/bergerm1/Innovation/projects/Juber/Wendy-Viral/resources/hg19-mcpyv-ebv-hpv/hg19-mcpyv-ebv-hpv.fasta
 R1Fastq=$1
 R2Fastq=${R1Fastq/_R1_/_R2_}
 R1FastqBasename=`basename $R1Fastq`
@@ -22,7 +22,7 @@ echo -e "`date` clipping adapter residues"
 
 # align fastqs
 echo -e "`date` aligning fastqs"
-/opt/common/CentOS_6/bwa/bwa-0.7.5a/bwa mem -t 4 -PM -R "@RG\tID:${sample}\tLB:Garbage\tSM:${sample}\tPL:Illumina\tPU:${barcode}\tCN:InnovationLab" $referenceFasta ${R1FastqBasename/.fastq.gz/_cl.fastq.gz} ${R2FastqBasename/.fastq.gz/_cl.fastq.gz} > ${sample}.sam
+/opt/common/CentOS_6/bwa/bwa-0.7.5a/bwa mem -t 4 -M -R "@RG\tID:${sample}\tLB:Garbage\tSM:${sample}\tPL:Illumina\tPU:${barcode}\tCN:InnovationLab" $referenceFasta ${R1FastqBasename/.fastq.gz/_cl.fastq.gz} ${R2FastqBasename/.fastq.gz/_cl.fastq.gz} > ${sample}.sam
 
 rm ${R1FastqBasename/.fastq.gz/_cl.fastq.gz} ${R2FastqBasename/.fastq.gz/_cl.fastq.gz}
 
@@ -43,9 +43,6 @@ else
   mv ${sample}_aln_srt_MD.bam ${sample}.bam
   mv ${sample}_aln_srt_MD.bai ${sample}.bai
 fi
-
-
-# add indel realignment!!!
 
 
 # fix mate information

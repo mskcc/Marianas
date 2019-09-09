@@ -10,13 +10,13 @@ export TMPDIR=/ifs/work/scratch
 
 
 java="/opt/common/CentOS_6/java/jdk1.8.0_31/bin/java"
-#referenceFasta=~/resources/impact-GRCh37/Homo_sapiens_assembly19.fasta
-referenceFasta=/ifs/work/bergerm1/Innovation/projects/Juber/Wendy-Viral/resources/hg19-mcpyv-ebv-hpv/hg19-mcpyv-ebv-hpv.fasta
+referenceFasta=~/resources/impact-GRCh37/Homo_sapiens_assembly19.fasta
+#referenceFasta=/ifs/work/bergerm1/Innovation/projects/Juber/Wendy-Viral/resources/hg19-mcpyv-ebv-hpv/hg19-mcpyv-ebv-hpv.fasta
 
 minMappingQuality="1"
 minBaseQuality="20"
-mismatches="1"
-wobble="2"
+mismatches="0"
+wobble="1"
 minConsensusPercent="90"
 jarFile="$HOME/software/Marianas.jar"
 
@@ -31,7 +31,7 @@ sample=${sample/.bam}
 
 # pass 1
 echo -e "`date` Pass 1"
-$java -server -Xms8g -Xmx8g -cp $jarFile org.mskcc.marianas.umi.duplex.DuplexUMIBamToCollapsedFastqFirstPass $bam $pileup $minMappingQuality $minBaseQuality $mismatches $wobble $minConsensusPercent $referenceFasta .
+$java -server -Xms8g -Xmx8g -cp $jarFile org.mskcc.marianas.umi.duplex.DuplexUMIBamToCollapsedFastqFirstPass $bam $pileup $minMappingQuality $minBaseQuality $mismatches $wobble $minConsensusPercent $referenceFasta
 
 
 # sort the first pass output by mate position
@@ -41,7 +41,7 @@ sort -S 8G -k 6,6n -k 8,8n first-pass.txt > first-pass.mate-position-sorted.txt
 
 # pass 2
 echo -e "`date` Pass 2"
-$java -server -Xms8g -Xmx8g -cp $jarFile org.mskcc.marianas.umi.duplex.DuplexUMIBamToCollapsedFastqSecondPass $bam $pileup $minMappingQuality $minBaseQuality $mismatches $wobble $minConsensusPercent $referenceFasta .
+$java -server -Xms8g -Xmx8g -cp $jarFile org.mskcc.marianas.umi.duplex.DuplexUMIBamToCollapsedFastqSecondPass $bam $pileup $minMappingQuality $minBaseQuality $mismatches $wobble $minConsensusPercent $referenceFasta first-pass.mate-position-sorted.txt
 
 # delete unnecessory files
 # rm first-pass.mate-position-sorted.txt

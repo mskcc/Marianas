@@ -12,10 +12,12 @@ import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.apache.commons.math3.exception.MathIllegalArgumentException;
 import org.apache.commons.math3.stat.Frequency;
+import org.mskcc.juber.genotype.Genotype;
 
 /**
  * @author Juber Patel
@@ -29,11 +31,13 @@ import org.apache.commons.math3.stat.Frequency;
 public class Polisher
 {
 
-	private static Map<String, String> hotspots = null;
+	private static Map<String, String> hotspots;
 
-	private static Map<FreqID, Frequency> afFrequencies = null;
-	private static Map<FreqID, Frequency> countFrequencies = null;
-	private static Map<FreqID, Integer> averageCoverages = null;
+	private static Map<FreqID, Frequency> afFrequencies;
+	private static Map<FreqID, Frequency> countFrequencies;
+	private static Map<FreqID, Integer> averageCoverages;
+	private static Map<String, Integer> mafColumns;
+	private static String mafHeader;
 
 	/**
 	 * @param args
@@ -44,8 +48,10 @@ public class Polisher
 		// must be same panel, i.e. must have same chrmosome and position on
 		// corresponding lines
 		File mafFile = new File(args[0]);
-		File afFrequenciesFile = new File(args[1]);
-		File countFrequenciesFile = new File(args[2]);
+		String depthColumnName = args[1];
+		String altColumnName = args[2];
+		File afFrequenciesFile = new File(args[3]);
+		File countFrequenciesFile = new File(args[4]);
 
 		// no more args beyond this point
 
@@ -53,101 +59,120 @@ public class Polisher
 		loadNoiseFrequencies(afFrequenciesFile, countFrequenciesFile);
 
 		System.out.println("Polishing Variants");
-		polish(mafFile);
+		polish(mafFile, depthColumnName, altColumnName);
+		System.out.println("Done");
 	}
 
-	private static void polish(File mafFile) throws IOException
+	private static void polish(File mafFile, String depthColumnName,
+			String altColumnName) throws IOException
 	{
 		BufferedReader mafReader = new BufferedReader(new FileReader(mafFile));
 
-		BufferedWriter polishingWriter = new BufferedWriter(new FileWriter(
-				mafFile.getName().replace(".maf", "") + "-polishing.txt"));
+		BufferedWriter writer = new BufferedWriter(new FileWriter(
+				mafFile.getName().replace(".maf", "-polished.maf")));
 
 		DecimalFormat df = new DecimalFormat("#.####");
 
 		String mafLine = mafReader.readLine();
+		processMafHeader(mafLine);
+		writer.write(mafHeader + "\n");
 
 		while ((mafLine = mafReader.readLine()) != null)
 		{
 			String[] tokens = mafLine.split("\t");
 
+			String p = "-";
+			String cov = "-";
+			String freqs = "-";
+
 			// look at only SNPs and single base deletions
-			if (!tokens[9].equals("SNP") && !(tokens[9].equals("DEL")
-					&& tokens[10].length() == 1 && tokens[12].equals("-")))
+			if (!tokens[mafColumns.get("Variant_Type")].equals("SNP")
+					&& !(tokens[mafColumns.get("Variant_Type")].equals("DEL")
+							&& tokens[mafColumns.get("Reference_Allele")]
+									.length() == 1
+							&& tokens[mafColumns.get("Tumor_Seq_Allele2")]
+									.equals("-")))
 			{
-				continue;
-			}
-
-			String chr = tokens[4];
-			int position = Integer.parseInt(tokens[5]);
-			char ref = tokens[10].charAt(0);
-			char alt = tokens[12].charAt(0);
-
-			if (tokens[9].equals("DEL"))
-			{
-				alt = 'D';
-			}
-
-			String sample = tokens[15];
-			int depth = Integer.parseInt(tokens[144]);
-			int altCount = Integer.parseInt(tokens[145]);
-			double af = (altCount * 1.0) / depth;
-
-			FreqID id = new FreqID(chr, position, ref, alt);
-			Frequency afFreq = afFrequencies.get(id);
-			Frequency countFreq = countFrequencies.get(id);
-			Integer averageCoverage = averageCoverages.get(id);
-
-			String p1 = null;
-			String p2 = null;
-			String p3 = null;
-			String p4 = null;
-			String cov = null;
-			String freqs = null;
-
-			if (afFreq == null)
-			{
-				p1 = p2 = "-";
-				cov = "-";
+				// no need to get p, cov, freqs
 			}
 			else
 			{
-				p1 = Double.toString(Tester.tTest(afFreq, af));
-				p2 = Double.toString(Tester.MannWhitneyUTest(afFreq, af));
-				cov = Integer.toString(averageCoverage);
+				String chr = tokens[mafColumns.get("Chromosome")];
+				int position = Integer
+						.parseInt(tokens[mafColumns.get("Start_Position")]);
+				char ref = tokens[mafColumns.get("Reference_Allele")].charAt(0);
+				char alt = tokens[mafColumns.get("Tumor_Seq_Allele2")]
+						.charAt(0);
+
+				if (tokens[mafColumns.get("Variant_Type")].equals("DEL"))
+				{
+					alt = 'D';
+				}
+
+				int depth = Integer
+						.parseInt(tokens[mafColumns.get(depthColumnName)]);
+				int altCount = Integer
+						.parseInt(tokens[mafColumns.get(altColumnName)]);
+				double af = (altCount * 1.0) / depth;
+
+				FreqID id = new FreqID(chr, position, ref, alt);
+				Frequency afFreq = afFrequencies.get(id);
+				Frequency countFreq = countFrequencies.get(id);
+				Integer averageCoverage = averageCoverages.get(id);
+
+				if (afFreq == null)
+				{
+					p = "-";
+					cov = "-";
+				}
+				else
+				{
+					p = Double.toString(Tester.tTest(afFreq, af));
+					cov = Integer.toString(averageCoverage);
+				}
+
+				if (countFreq == null)
+				{
+					freqs = "-";
+				}
+				else
+				{
+					freqs = frquencyTableString(countFreq);
+				}
 			}
 
-			if (countFreq == null)
-			{
-				p3 = p4 = "-";
-				freqs = "-";
-			}
-			else
-			{
-				p3 = Double.toString(Tester.tTest(countFreq, af));
-				p4 = Double.toString(Tester.MannWhitneyUTest(countFreq, af));
-				freqs = frquencyTableString(countFreq);
-			}
-
-			StringBuilder s = new StringBuilder();
-			s.append(id.toString());
+			StringBuilder s = new StringBuilder(mafLine);
 			s.append("\t").append(cov);
-			s.append("\t").append(sample);
-			s.append("\t").append(altCount);
-			s.append("\t").append(depth);
-			s.append("\t").append(af);
-			s.append("\t").append(p1);
-			s.append("\t").append(p2);
-			s.append("\t").append(p3);
-			s.append("\t").append(p4);
+			s.append("\t").append(p);
 			s.append("\t").append(freqs);
 			s.append("\n");
 
-			polishingWriter.write(s.toString());
+			writer.write(s.toString());
 		}
 
-		polishingWriter.close();
+		writer.close();
 		mafReader.close();
+	}
+
+	private static void processMafHeader(String header)
+	{
+		mafColumns = new LinkedHashMap<String, Integer>();
+
+		// Add polishing fields
+		mafHeader = header + "\tPolishing_Position_Average_Coverage"
+				+ "\tPolishing_P_Value" + "\tFragment_Count->Samples_Map";
+
+		String[] parts = mafHeader.split("\t");
+
+		for (int i = 0; i < parts.length; i++)
+		{
+			mafColumns.put(parts[i], i);
+		}
+	}
+
+	public String getMafHeader()
+	{
+		return mafHeader;
 	}
 
 	private static String frquencyTableString(Frequency countFreq)

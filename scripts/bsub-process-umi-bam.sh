@@ -10,7 +10,7 @@ newProjectDir=`pwd`
 
 mkdir FinalBams
 mkdir FinalBams/unfiltered
-mkdir FinalBams/simplex-duplex
+mkdir FinalBams/simplex
 mkdir FinalBams/duplex
 
 
